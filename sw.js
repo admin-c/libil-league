@@ -1,6 +1,6 @@
 // ===== КОНФИГУРАЦИЯ КЭША =====
-const CACHE_VERSION = 'liga-v6';
-const CACHE_NAME = `${CACHE_VERSION}-${Date.now()}`; // Уникальное имя для принудительного обновления
+const CACHE_VERSION = 'liga-v7';
+const CACHE_NAME = `${CACHE_VERSION}-${Date.now()}`;
 
 // Статические ресурсы для кэширования
 const STATIC_ASSETS = [
@@ -17,7 +17,7 @@ const STATIC_ASSETS = [
   '/clearcache.html'
 ];
 
-// ===== УСТАНОВКА SERVICE WORKER =====
+// ===== УСТАНОВКА =====
 self.addEventListener('install', event => {
   console.log(`[SW ${CACHE_VERSION}] Установка`);
   
@@ -27,13 +27,18 @@ self.addEventListener('install', event => {
         const cache = await caches.open(CACHE_NAME);
         console.log(`[SW] Кэширование ${STATIC_ASSETS.length} файлов`);
         
-        // Кэшируем основные файлы
-        await cache.addAll(STATIC_ASSETS);
-        console.log('[SW] Все файлы закэшированы');
+        // Кэшируем с обработкой ошибок
+        for (const url of STATIC_ASSETS) {
+          try {
+            await cache.add(url);
+          } catch (err) {
+            console.warn(`[SW] Не удалось закэшировать ${url}:`, err.message);
+          }
+        }
         
-        // Активируем сразу
+        console.log('[SW] Все файлы закэшированы');
         await self.skipWaiting();
-        console.log('[SW] Активирован');
+        
       } catch (error) {
         console.error('[SW] Ошибка при установке:', error);
       }
@@ -41,41 +46,26 @@ self.addEventListener('install', event => {
   );
 });
 
-// ===== АКТИВАЦИЯ И ОЧИСТКА СТАРЫХ КЭШЕЙ =====
+// ===== АКТИВАЦИЯ =====
 self.addEventListener('activate', event => {
   console.log(`[SW ${CACHE_VERSION}] Активация`);
   
   event.waitUntil(
     (async () => {
       try {
-        // Получаем все имена кэшей
+        // Очищаем старые кэши
         const cacheNames = await caches.keys();
-        console.log('[SW] Найдены кэши:', cacheNames);
-        
-        // Удаляем все старые кэши, кроме текущего
-        const deletePromises = cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME && cacheName.startsWith('liga-')) {
-            console.log(`[SW] Удаляю старый кэш: ${cacheName}`);
-            return caches.delete(cacheName);
-          }
-        });
-        
-        await Promise.all(deletePromises);
-        console.log('[SW] Старые кэши удалены');
-        
-        // Берём управление над всеми вкладками
-        await self.clients.claim();
-        console.log('[SW] Контроль над клиентами установлен');
-        
-        // Отправляем сообщение всем вкладкам
-        const clients = await self.clients.matchAll();
-        clients.forEach(client => {
-          client.postMessage({
-            type: 'SW_UPDATED',
-            version: CACHE_VERSION,
-            timestamp: Date.now()
+        const deletions = cacheNames
+          .filter(name => name.startsWith('liga-') && name !== CACHE_NAME)
+          .map(name => {
+            console.log(`[SW] Удаляю старый кэш: ${name}`);
+            return caches.delete(name);
           });
-        });
+        
+        await Promise.all(deletions);
+        await self.clients.claim();
+        
+        console.log('[SW] Активация завершена');
         
       } catch (error) {
         console.error('[SW] Ошибка при активации:', error);
@@ -89,112 +79,95 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
   
-  // Пропускаем неподдерживаемые схемы
-  if (request.method !== 'GET' || url.protocol === 'chrome-extension:') {
+  // ВАЖНО: НИКОГДА не перехватываем API запросы!
+  if (url.pathname.startsWith('/api/')) {
+    // Полностью пропускаем API запросы
     return;
   }
   
-  // Игнорируем API запросы и внешние ресурсы
-  if (url.pathname.startsWith('/api/') || 
-      url.hostname.includes('github.com') ||
-      url.hostname.includes('unsplash.com') ||
-      url.hostname.includes('icons8.com')) {
-    return fetch(request);
+  // Игнорируем POST, PUT, DELETE запросы
+  if (request.method !== 'GET') {
+    return;
   }
   
-  // Для HTML страниц - стратегия "Network first, then cache"
+  // Игнорируем внешние ресурсы
+  if (!url.href.startsWith(self.location.origin)) {
+    return;
+  }
+  
+  // Для HTML страниц - стратегия "Network first"
   if (request.headers.get('Accept')?.includes('text/html')) {
-    event.respondWith(networkFirst(request));
+    event.respondWith(handleHtmlRequest(request));
     return;
   }
   
-  // Для статических ресурсов - стратегия "Cache first"
-  if (request.url.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$/)) {
-    event.respondWith(cacheFirst(request));
-    return;
+  // Для статики - стратегия "Cache first"
+  if (request.url.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|json)$/)) {
+    event.respondWith(handleStaticRequest(request));
   }
-  
-  // Для остального - пробуем сеть, потом кэш
-  event.respondWith(networkFirst(request));
 });
 
-// ===== СТРАТЕГИИ КЭШИРОВАНИЯ =====
+// ===== СТРАТЕГИИ =====
 
-// Стратегия "Network First" - сначала сеть, потом кэш
-async function networkFirst(request) {
+// Обработка HTML запросов
+async function handleHtmlRequest(request) {
   try {
-    // Пытаемся получить из сети
+    // Сначала пробуем сеть
     const networkResponse = await fetch(request);
     
-    // Клонируем ответ для кэширования
-    const responseClone = networkResponse.clone();
-    
-    // Кэшируем успешные ответы
-    if (networkResponse.ok && networkResponse.status === 200) {
-      caches.open(CACHE_NAME).then(cache => {
-        cache.put(request, responseClone);
-      });
+    // Если успешно, кэшируем
+    if (networkResponse.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, networkResponse.clone());
     }
     
     return networkResponse;
     
   } catch (error) {
-    console.log('[SW] Ошибка сети, пытаюсь кэш:', request.url);
-    
-    // Если сеть не доступна, ищем в кэше
+    // Если сеть не доступна, пробуем кэш
     const cachedResponse = await caches.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
     
-    // Для HTML страниц возвращаем заглушку
-    if (request.headers.get('Accept')?.includes('text/html')) {
-      return caches.match('/index.html');
-    }
-    
-    // Возвращаем стандартный ответ об ошибке
-    return new Response('Нет соединения', {
-      status: 503,
-      statusText: 'Нет соединения с интернетом',
-      headers: { 'Content-Type': 'text/plain' }
-    });
+    // Возвращаем страницу 404 или главную
+    return caches.match('/index.html') || 
+           new Response('Страница не найдена', { status: 404 });
   }
 }
 
-// Стратегия "Cache First" - сначала кэш, потом сеть
-async function cacheFirst(request) {
+// Обработка статических файлов
+async function handleStaticRequest(request) {
+  // Сначала пробуем кэш
+  const cachedResponse = await caches.match(request);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+  
   try {
-    // Пытаемся получить из кэша
-    const cachedResponse = await caches.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
-    
     // Если нет в кэше, загружаем из сети
     const networkResponse = await fetch(request);
     
     // Кэшируем для будущего использования
     if (networkResponse.ok) {
-      const responseClone = networkResponse.clone();
-      caches.open(CACHE_NAME).then(cache => {
-        cache.put(request, responseClone);
-      });
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, networkResponse.clone());
     }
     
     return networkResponse;
     
   } catch (error) {
-    console.error('[SW] Ошибка:', error);
+    // Если файл не загрузился, возвращаем заглушку
+    const url = new URL(request.url);
     
-    // Возвращаем заглушку для CSS/JS
-    if (request.url.endsWith('.css')) {
-      return new Response('/* Файл стилей временно недоступен */', {
+    if (url.pathname.endsWith('.css')) {
+      return new Response('/* CSS временно недоступен */', {
         headers: { 'Content-Type': 'text/css' }
       });
     }
     
-    if (request.url.endsWith('.js')) {
-      return new Response('// Файл скрипта временно недоступен', {
+    if (url.pathname.endsWith('.js')) {
+      return new Response('// JS временно недоступен', {
         headers: { 'Content-Type': 'application/javascript' }
       });
     }
@@ -203,110 +176,23 @@ async function cacheFirst(request) {
   }
 }
 
-// ===== ОБРАБОТКА СООБЩЕНИЙ =====
+// ===== ПРОСТОЙ КОД БЕЗ СЛОЖНОЙ ЛОГИКИ =====
 self.addEventListener('message', event => {
-  console.log('[SW] Получено сообщение:', event.data);
+  const { type } = event.data;
   
-  const { type, data } = event.data;
-  
-  switch (type) {
-    case 'CLEAR_CACHE':
-      clearCache();
-      break;
-      
-    case 'GET_CACHE_INFO':
-      getCacheInfo().then(info => {
-        event.ports[0].postMessage(info);
-      });
-      break;
-      
-    case 'SKIP_WAITING':
-      self.skipWaiting();
-      break;
+  if (type === 'CLEAR_CACHE') {
+    clearCache();
+  } else if (type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
 
-// ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
-
-// Очистка кэша
 async function clearCache() {
   try {
     const cacheNames = await caches.keys();
-    const deletePromises = cacheNames.map(name => caches.delete(name));
-    await Promise.all(deletePromises);
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
     console.log('[SW] Все кэши очищены');
   } catch (error) {
-    console.error('[SW] Ошибка при очистке кэша:', error);
+    console.error('[SW] Ошибка очистки кэша:', error);
   }
 }
-
-// Получение информации о кэше
-async function getCacheInfo() {
-  try {
-    const cacheNames = await caches.keys();
-    const cacheInfos = [];
-    
-    for (const name of cacheNames) {
-      const cache = await caches.open(name);
-      const requests = await cache.keys();
-      cacheInfos.push({
-        name,
-        size: requests.length,
-        urls: requests.map(req => req.url)
-      });
-    }
-    
-    return {
-      version: CACHE_VERSION,
-      currentCache: CACHE_NAME,
-      allCaches: cacheInfos
-    };
-    
-  } catch (error) {
-    console.error('[SW] Ошибка при получении информации:', error);
-    return { error: error.message };
-  }
-}
-
-// ===== ФОНОВЫЕ ЗАДАЧИ =====
-self.addEventListener('periodicsync', event => {
-  if (event.tag === 'update-cache') {
-    event.waitUntil(updateCache());
-  }
-});
-
-// Фоновая задача обновления кэша
-async function updateCache() {
-  console.log('[SW] Фоновое обновление кэша');
-  
-  try {
-    const cache = await caches.open(CACHE_NAME);
-    
-    // Обновляем основные страницы
-    const urlsToUpdate = STATIC_ASSETS;
-    
-    for (const url of urlsToUpdate) {
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          await cache.put(url, response);
-          console.log(`[SW] Обновлен: ${url}`);
-        }
-      } catch (error) {
-        console.log(`[SW] Не удалось обновить ${url}:`, error.message);
-      }
-    }
-    
-  } catch (error) {
-    console.error('[SW] Ошибка при обновлении кэша:', error);
-  }
-}
-
-// ===== ОБРАБОТКА ОШИБОК =====
-self.addEventListener('error', error => {
-  console.error('[SW] Ошибка:', error);
-});
-
-self.addEventListener('unhandledrejection', event => {
-  console.error('[SW] Необработанное исключение:', event.reason);
-});
