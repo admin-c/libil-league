@@ -146,9 +146,9 @@ app.get('/api/data', async (req, res) => {
 // Register new team
 app.post('/api/register', async (req, res) => {
     try {
-        console.log('Processing registration:', req.body);
+        console.log('📝 Получена новая заявка на регистрацию');
         
-        // Load current data
+        // Загружаем текущие данные
         const dataResponse = await fetch(GIST_URL, { headers: AUTH_HEADERS });
         let data = INITIAL_DATA;
         
@@ -156,68 +156,155 @@ app.post('/api/register', async (req, res) => {
             const gist = await dataResponse.json();
             if (gist.files && gist.files[CONFIG.FILE_NAME]) {
                 data = JSON.parse(gist.files[CONFIG.FILE_NAME].content);
+                console.log('✅ Данные успешно загружены из Gist');
+            } else {
+                console.log('⚠️ Файл data.json не найден в Gist, создаем новый');
             }
+        } else {
+            console.warn('⚠️ Не удалось загрузить данные, используем начальные');
         }
         
         const registration = req.body;
+        console.log('Данные заявки:', registration);
         
-        // Validate registration
+        // Валидация
         if (!registration.team || !registration.owner) {
-            return res.status(400).json({ error: 'Team name and owner are required' });
+            console.error('❌ Отсутствует название команды или владелец');
+            return res.status(400).json({ 
+                error: 'Название команды и имя владельца обязательны' 
+            });
         }
         
-        // Check for duplicates in standings
-        if (data.standings.some(t => t.team.toLowerCase() === registration.team.toLowerCase())) {
-            return res.status(400).json({ error: 'Team already exists in the league' });
+        // Проверяем дубликаты в standings
+        if (data.standings && data.standings.some(t => 
+            t.team.toLowerCase() === registration.team.toLowerCase())) {
+            console.error(`❌ Команда "${registration.team}" уже существует в лиге`);
+            return res.status(400).json({ 
+                error: 'Команда с таким названием уже зарегистрирована в лиге' 
+            });
         }
         
-        // Check for duplicates in pending registrations
-        if (data.pendingRegistrations?.some(r => r.team.toLowerCase() === registration.team.toLowerCase())) {
-            return res.status(400).json({ error: 'Registration already pending for this team' });
+        // Проверяем дубликаты в pending registrations
+        if (data.pendingRegistrations && data.pendingRegistrations.some(r => 
+            r.team.toLowerCase() === registration.team.toLowerCase())) {
+            console.error(`❌ Заявка для "${registration.team}" уже отправлена`);
+            return res.status(400).json({ 
+                error: 'Заявка на эту команду уже отправлена и ожидает подтверждения' 
+            });
         }
         
-        // Add registration
-        registration.id = Date.now();
-        registration.date = new Date().toISOString();
-        registration.status = 'pending';
+        // Подготавливаем заявку
+        const newRegistration = {
+            id: Date.now(),
+            team: registration.team.trim(),
+            owner: registration.owner.trim(),
+            email: registration.email?.trim() || null,
+            phone: registration.phone?.trim() || null,
+            date: new Date().toISOString(),
+            status: 'pending',
+            ip: req.ip || 'unknown'
+        };
         
+        // Инициализируем массивы если их нет
         if (!data.pendingRegistrations) {
             data.pendingRegistrations = [];
         }
-        
-        data.pendingRegistrations.push(registration);
-        
-        // Add activity
         if (!data.activities) {
             data.activities = [];
         }
         
+        // Добавляем заявку
+        data.pendingRegistrations.push(newRegistration);
+        
+        // Добавляем активность
         data.activities.unshift({
             id: Date.now(),
             type: 'registration',
-            message: `Новая заявка: ${registration.team} (${registration.owner})`,
+            message: `Новая заявка: ${newRegistration.team} (${newRegistration.owner})`,
             date: new Date().toISOString(),
             user: 'system'
         });
         
-        // Save to Gist
+        // Сохраняем в Gist
+        console.log('💾 Сохраняем данные в Gist...');
         await updateGist(data);
+        console.log(`✅ Заявка "${newRegistration.team}" успешно сохранена`);
         
         res.json({ 
             success: true, 
-            message: 'Registration submitted successfully',
-            registrationId: registration.id 
+            message: 'Заявка успешно отправлена и ожидает подтверждения',
+            registrationId: newRegistration.id,
+            team: newRegistration.team
         });
         
     } catch (error) {
-        console.error('Error processing registration:', error);
+        console.error('❌ Ошибка при обработке заявки:', error);
         res.status(500).json({ 
-            error: 'Failed to process registration',
-            message: error.message 
+            error: 'Внутренняя ошибка сервера',
+            message: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
 
+// Get all data (добавьте логирование)
+app.get('/api/data', async (req, res) => {
+    try {
+        console.log('📥 Запрос данных...');
+        
+        const response = await fetch(GIST_URL, { 
+            headers: AUTH_HEADERS,
+            timeout: 10000
+        });
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                console.log('Gist не найден, возвращаем начальные данные');
+                return res.json(INITIAL_DATA);
+            }
+            console.error(`GitHub API error: ${response.status}`);
+            return res.status(500).json({ 
+                error: 'Не удалось загрузить данные с GitHub',
+                fallback: true,
+                data: INITIAL_DATA
+            });
+        }
+        
+        const gist = await response.json();
+        
+        if (!gist.files || !gist.files[CONFIG.FILE_NAME]) {
+            console.log('Файл data.json не найден, возвращаем начальные данные');
+            return res.json(INITIAL_DATA);
+        }
+        
+        const fileContent = gist.files[CONFIG.FILE_NAME].content;
+        const data = JSON.parse(fileContent);
+        
+        // Объединяем с начальными данными для безопасности
+        const completeData = {
+            ...INITIAL_DATA,
+            ...data,
+            standings: data.standings || [],
+            matches: data.matches || [],
+            news: data.news || INITIAL_DATA.news,
+            pendingRegistrations: data.pendingRegistrations || [],
+            activities: data.activities || INITIAL_DATA.activities
+        };
+        
+        console.log(`✅ Данные загружены: ${completeData.standings.length} команд, ${completeData.pendingRegistrations.length} заявок`);
+        
+        res.json(completeData);
+        
+    } catch (error) {
+        console.error('❌ Ошибка загрузки данных:', error);
+        res.status(500).json({ 
+            error: 'Ошибка загрузки данных',
+            message: error.message,
+            fallback: true,
+            data: INITIAL_DATA
+        });
+    }
+});
 // Save all data (admin endpoint)
 app.post('/api/save', async (req, res) => {
   try {
@@ -433,4 +520,5 @@ app.listen(PORT, () => {
     console.log(`   - GIST_ID: ваш_идентификатор_gist`);
     console.log(`   - GITHUB_TOKEN: ваш_токен_github`);
 });
+
 
