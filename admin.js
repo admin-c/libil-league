@@ -1,5 +1,10 @@
 // ===== КОНФИГУРАЦИЯ =====
-const ADMIN_PASSWORD = "Ali"; // Пароль для доступа
+const ADMIN_PASSWORD = "Ali";
+const CONFIG = {
+    GIST_ID: 'c37ece5d8832c31be098e4d39e8cb328', // Ваш Gist ID
+    FILE_NAME: 'data.json'
+};
+
 let adminData = {};
 
 // ===== АУТЕНТИФИКАЦИЯ =====
@@ -36,7 +41,6 @@ function renderAdminPanels() {
     populateTeamSelects();
 }
 
-// 1. Заявки на регистрацию
 function renderPendingRegistrations() {
     const container = document.getElementById('pendingRegistrations');
     if (!adminData.pendingRegistrations || adminData.pendingRegistrations.length === 0) {
@@ -59,7 +63,6 @@ function renderPendingRegistrations() {
     `).join('');
 }
 
-// 2. Список команд
 function renderTeamsList() {
     const container = document.getElementById('teamsList');
     container.innerHTML = adminData.standings.map(team => `
@@ -76,7 +79,6 @@ function renderTeamsList() {
     `).join('');
 }
 
-// 3. Матчи
 function renderMatches() {
     const now = new Date();
     
@@ -130,7 +132,6 @@ function renderMatches() {
     `).join('') || '<p>Нет завершенных матчей</p>';
 }
 
-// 4. Новости
 function renderNews() {
     const container = document.getElementById('newsListAdmin');
     container.innerHTML = adminData.news.map(item => `
@@ -146,7 +147,6 @@ function renderNews() {
     `).join('');
 }
 
-// 5. Редактор таблицы
 function renderStandingsEditor() {
     const container = document.getElementById('standingsEditor');
     container.innerHTML = adminData.standings.map(team => `
@@ -167,14 +167,18 @@ function renderStandingsEditor() {
     `).join('');
 }
 
-// ===== ФУНКЦИИ УПРАВЛЕНИЯ =====
+function populateTeamSelects() {
+    const selectHTML = adminData.standings.map(t => `<option value="${t.team}">${t.team} (${t.owner})</option>`).join('');
+    document.querySelectorAll('select[id^="match"]').forEach(select => {
+        select.innerHTML = `<option value="">Выберите команду</option>${selectHTML}`;
+    });
+}
 
-// Заявки
+// ===== ФУНКЦИИ УПРАВЛЕНИЯ =====
 async function approveRegistration(id) {
     const reg = adminData.pendingRegistrations.find(r => r.id === id);
     if (!reg) return;
     
-    // Добавляем команду в таблицу
     adminData.standings.push({
         team: reg.team,
         owner: reg.owner,
@@ -187,7 +191,6 @@ async function approveRegistration(id) {
         points: 0
     });
     
-    // Удаляем из ожидания
     adminData.pendingRegistrations = adminData.pendingRegistrations.filter(r => r.id !== id);
     
     await saveAllData();
@@ -201,7 +204,6 @@ function rejectRegistration(id) {
     renderAdminPanels();
 }
 
-// Команды
 function addTeamManually() {
     const name = document.getElementById('newTeamName').value.trim();
     const owner = document.getElementById('newTeamOwner').value.trim();
@@ -241,7 +243,6 @@ function editTeam(teamName) {
     if (newName && newName !== teamName) {
         const team = adminData.standings.find(t => t.team === teamName);
         team.team = newName;
-        // Обновляем также в матчах
         adminData.matches.forEach(m => {
             if (m.homeTeam === teamName) m.homeTeam = newName;
             if (m.awayTeam === teamName) m.awayTeam = newName;
@@ -258,14 +259,6 @@ function deleteTeam(teamName) {
     adminData.matches = adminData.matches.filter(m => m.homeTeam !== teamName && m.awayTeam !== teamName);
     saveAllData();
     renderAdminPanels();
-}
-
-// Матчи
-function populateTeamSelects() {
-    const selectHTML = adminData.standings.map(t => `<option value="${t.team}">${t.team} (${t.owner})</option>`).join('');
-    document.querySelectorAll('select[id^="match"]').forEach(select => {
-        select.innerHTML = `<option value="">Выберите команду</option>${selectHTML}`;
-    });
 }
 
 function showMatchForm() {
@@ -315,11 +308,10 @@ function generateRound() {
     const shuffled = teams.sort(() => Math.random() - 0.5);
     const matches = [];
     
-    // Создаем пары
     for (let i = 0; i < shuffled.length; i += 2) {
         if (i + 1 < shuffled.length) {
             const date = new Date();
-            date.setDate(date.getDate() + 7); // Матчи через неделю
+            date.setDate(date.getDate() + 7);
             
             matches.push({
                 id: Date.now() + i,
@@ -381,8 +373,6 @@ function finishMatch(matchId) {
     if (!match) return;
     
     match.status = 'finished';
-    
-    // Обновляем статистику команд
     updateTeamStatsAfterMatch(match);
     
     saveAllData();
@@ -396,17 +386,14 @@ function updateTeamStatsAfterMatch(match) {
     
     if (!homeTeam || !awayTeam) return;
     
-    // Обновляем сыгранные матчи
     homeTeam.played++;
     awayTeam.played++;
     
-    // Обновляем голы
     homeTeam.goalsFor += match.homeScore;
     homeTeam.goalsAgainst += match.awayScore;
     awayTeam.goalsFor += match.awayScore;
     awayTeam.goalsAgainst += match.homeScore;
     
-    // Определяем результат
     if (match.homeScore > match.awayScore) {
         homeTeam.wins++;
         homeTeam.points += 3;
@@ -427,12 +414,10 @@ function reopenMatch(matchId) {
     const match = adminData.matches.find(m => m.id == matchId);
     if (!match) return;
     
-    // Возвращаем статистику команд
     const homeTeam = adminData.standings.find(t => t.team === match.homeTeam);
     const awayTeam = adminData.standings.find(t => t.team === match.awayTeam);
     
     if (homeTeam && awayTeam) {
-        // Откатываем статистику (упрощенно)
         homeTeam.played = Math.max(0, homeTeam.played - 1);
         awayTeam.played = Math.max(0, awayTeam.played - 1);
         homeTeam.goalsFor -= match.homeScore;
@@ -440,7 +425,6 @@ function reopenMatch(matchId) {
         awayTeam.goalsFor -= match.awayScore;
         awayTeam.goalsAgainst -= match.homeScore;
         
-        // Откатываем очки
         if (match.homeScore > match.awayScore) {
             homeTeam.wins = Math.max(0, homeTeam.wins - 1);
             homeTeam.points = Math.max(0, homeTeam.points - 3);
@@ -485,7 +469,6 @@ function deleteMatch(matchId) {
     renderAdminPanels();
 }
 
-// Новости
 function addNews() {
     const title = document.getElementById('newsTitle').value.trim();
     const content = document.getElementById('newsContent').value.trim();
@@ -520,16 +503,11 @@ function deleteNews(newsId) {
     renderAdminPanels();
 }
 
-// Таблица
 function updateTeamStat(teamName, stat, value) {
     const team = adminData.standings.find(t => t.team === teamName);
     if (team) {
         team[stat] = parseInt(value) || 0;
-        
-        // Автоматически пересчитываем очки если меняем победы/ничьи
-        if (stat === 'wins') {
-            team.points = (team.wins * 3) + (team.draws * 1);
-        } else if (stat === 'draws') {
+        if (stat === 'wins' || stat === 'draws') {
             team.points = (team.wins * 3) + (team.draws * 1);
         }
     }
@@ -577,10 +555,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
     });
 });
 
-// Автосохранение каждые 30 секунд
 setInterval(saveAllData, 30000);
 
-// Загружаем данные при загрузке страницы (после авторизации)
 if (document.getElementById('adminContent').style.display === 'block') {
     loadAdminData();
 }
