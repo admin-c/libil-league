@@ -1,3 +1,10 @@
+// ===== SERVICE WORKER MANAGER =====
+// Загружаем менеджер Service Worker
+const swScript = document.createElement('script');
+swScript.src = '/sw-manager.js';
+swScript.async = true;
+document.head.appendChild(swScript);
+
 // ===== КОНФИГУРАЦИЯ API =====
 // Данные берутся из переменных окружения на Render.com
 const CONFIG = {
@@ -359,3 +366,4 @@ if ('serviceWorker' in navigator) {
 window.registerTeam = registerTeam;
 window.showRegisteredMenu = showRegisteredMenu;
 window.showTab = showTab;
+
