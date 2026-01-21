@@ -308,6 +308,166 @@
         }
     });
 </script>
+    <script>
+    // ===== ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ INDEX.HTML =====
+    
+    // Particles background
+    function createParticles() {
+        const particles = document.getElementById('particles');
+        if (!particles) return;
+        
+        for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + 'vw';
+            particle.style.animationDelay = Math.random() * 20 + 's';
+            particle.style.animationDuration = 15 + Math.random() * 15 + 's';
+            particles.appendChild(particle);
+        }
+    }
+
+    // Tab switching
+    function showTab(tabName) {
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelectorAll('.auth-form').forEach(form => {
+            form.classList.remove('active');
+        });
+        
+        if (tabName === 'login') {
+            document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
+            document.getElementById('loginForm').classList.add('active');
+        } else {
+            document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
+            document.getElementById('registerForm').classList.add('active');
+        }
+    }
+
+    // Login function
+    async function loginTeam() {
+        const team = document.getElementById('loginTeam')?.value.trim();
+        const owner = document.getElementById('loginOwner')?.value.trim();
+        
+        if (!team || !owner) {
+            alert('Заполните все поля');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/data');
+            const data = await response.json();
+            
+            const existingTeam = data.standings?.find(t => 
+                t.team.toLowerCase() === team.toLowerCase() && 
+                t.owner.toLowerCase() === owner.toLowerCase()
+            );
+            
+            if (existingTeam) {
+                localStorage.setItem('liga_userTeam', team);
+                localStorage.setItem('liga_userOwner', owner);
+                window.location.href = 'table.html';
+            } else {
+                alert('Команда не найдена. Проверьте данные или зарегистрируйте новую команду.');
+            }
+        } catch (error) {
+            console.error('Ошибка входа:', error);
+            alert('Ошибка сервера. Попробуйте позже.');
+        }
+    }
+
+    // Registration function
+    async function registerTeam() {
+        const team = document.getElementById('regTeam')?.value.trim();
+        const owner = document.getElementById('regOwner')?.value.trim();
+        const email = document.getElementById('regEmail')?.value.trim();
+        const phone = document.getElementById('regPhone')?.value.trim();
+        
+        if (!team || !owner) {
+            alert('Заполните обязательные поля (название команды и владельца)');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/data');
+            const data = await response.json();
+            
+            if (data.standings?.some(t => t.team.toLowerCase() === team.toLowerCase())) {
+                alert('Команда с таким названием уже существует');
+                return;
+            }
+            
+            if (data.pendingRegistrations?.some(r => r.team.toLowerCase() === team.toLowerCase())) {
+                alert('Заявка на эту команду уже подана и ожидает подтверждения');
+                return;
+            }
+            
+            const registration = {
+                id: Date.now(),
+                team: team,
+                owner: owner,
+                email: email || null,
+                phone: phone || null,
+                date: new Date().toISOString(),
+                status: 'pending'
+            };
+            
+            const saveResponse = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(registration)
+            });
+            
+            if (saveResponse.ok) {
+                alert('Заявка отправлена! Ожидайте подтверждения администратора.');
+                document.getElementById('regTeam').value = '';
+                document.getElementById('regOwner').value = '';
+                document.getElementById('regEmail').value = '';
+                document.getElementById('regPhone').value = '';
+                showTab('login');
+            } else {
+                throw new Error('Ошибка отправки заявки');
+            }
+        } catch (error) {
+            console.error('Ошибка регистрации:', error);
+            alert('Ошибка сервера. Попробуйте позже.');
+        }
+    }
+
+    // Mobile menu
+    document.getElementById('mobileMenu')?.addEventListener('click', () => {
+        document.querySelector('.nav-links').classList.toggle('active');
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        createParticles();
+        
+        // Check if user is already logged in
+        const userTeam = localStorage.getItem('liga_userTeam');
+        if (userTeam) {
+            window.location.href = 'table.html';
+        }
+        
+        // Добавляем обработчики Enter для форм
+        document.getElementById('loginTeam')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loginTeam();
+        });
+        
+        document.getElementById('loginOwner')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loginTeam();
+        });
+        
+        document.getElementById('regTeam')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') registerTeam();
+        });
+        
+        document.getElementById('regOwner')?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') registerTeam();
+        });
+    });
+</script>
 </body>
 </html>
+
 
