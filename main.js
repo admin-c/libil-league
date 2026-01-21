@@ -237,15 +237,29 @@ window.addEventListener('beforeinstallprompt', (e) => {
     deferredPrompt = e;
     installBtn.style.display = 'block';
     
-    installBtn.addEventListener('click', () => {
+    installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        
         installBtn.style.display = 'none';
         deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-            deferredPrompt = null;
-        });
+        
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`Пользователь ${outcome} установку`);
+        deferredPrompt = null;
     });
 });
 
+window.addEventListener('appinstalled', () => {
+    console.log('Приложение успешно установлено');
+    installBtn.style.display = 'none';
+    deferredPrompt = null;
+});
+
+// Скрываем кнопку, если приложение уже установлено
+if (window.matchMedia('(display-mode: standalone)').matches || 
+    window.navigator.standalone === true) {
+    installBtn.style.display = 'none';
+}
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.menu-toggle').addEventListener('click', () => {
@@ -274,3 +288,4 @@ if ('serviceWorker' in navigator) {
         .then(() => console.log('Service Worker зарегистрирован'))
         .catch(err => console.log('Ошибка регистрации SW:', err));
 }
+
