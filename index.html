@@ -307,9 +307,46 @@
             if (regForm) regForm.style.display = 'none';
         }
     });
+
+    // Обработчики для кнопок
+document.addEventListener('DOMContentLoaded', function() {
+    // Кнопка входа
+    const loginButton = document.getElementById('loginButton');
+    if (loginButton) {
+        loginButton.addEventListener('click', function() {
+            loginTeam();
+        });
+    }
+    
+    // Кнопка регистрации
+    const registerButton = document.getElementById('registerButton');
+    if (registerButton) {
+        registerButton.addEventListener('click', function() {
+            registerTeam();
+        });
+    }
+    
+    // Обработка Enter в формах
+    document.getElementById('loginTeam')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') loginTeam();
+    });
+    
+    document.getElementById('loginOwner')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') loginTeam();
+    });
+    
+    document.getElementById('regTeam')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') registerTeam();
+    });
+    
+    document.getElementById('regOwner')?.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') registerTeam();
+    });
+});   
 </script>
 </body>
 </html>
+
 
 
 
