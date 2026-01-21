@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Очистка кэша - ЛЪибилская Лига</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: #0f172a;
+            color: white;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #1e293b;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        .primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .primary:hover {
+            background: #2563eb;
+        }
+        .success {
+            background: #10b981;
+            color: white;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧹 Очистка кэша приложения</h1>
+        
+        <div class="info">
+            <p>Если сайт не обновляется или показывает старую версию,</p>
+            <p>очистите кэш с помощью этой страницы.</p>
+        </div>
+        
+        <div id="status">
+            <p>Нажмите кнопку для очистки:</p>
+        </div>
+        
+        <div>
+            <button class="primary" onclick="clearCache()">Очистить кэш</button>
+            <button onclick="goHome()">На главную</button>
+            <button onclick="hardReset()" class="error">Полный сброс</button>
+        </div>
+        
+        <div id="cacheInfo" style="margin-top: 30px; text-align: left;"></div>
+    </div>
+    
+    <script>
+        async function clearCache() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<p>⏳ Очистка кэша...</p>';
+            
+            try {
+                // 1. Очищаем через Service Worker Manager
+                if (window.swManager) {
+                    await window.swManager.clearCache();
+                }
+                
+                // 2. Очищаем напрямую
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (const name of cacheNames) {
+                        await caches.delete(name);
+                    }
+                }
+                
+                // 3. Удаляем Service Workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (const reg of registrations) {
+                        await reg.unregister();
+                    }
+                }
+                
+                // 4. Очищаем хранилища
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // 5. Очищаем IndexedDB
+                if (window.indexedDB) {
+                    const dbs = await indexedDB.databases();
+                    for (const db of dbs) {
+                        if (db.name) {
+                            indexedDB.deleteDatabase(db.name);
+                        }
+                    }
+                }
+                
+                status.innerHTML = `
+                    <p class="success">✅ Кэш успешно очищен!</p>
+                    <p>Страница перезагрузится через 3 секунды...</p>
+                `;
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html?nocache=' + Date.now();
+                }, 3000);
+                
+            } catch (error) {
+                status.innerHTML = `
+                    <p class="error">❌ Ошибка: ${error.message}</p>
+                `;
+            }
+        }
+        
+        async function hardReset() {
+            if (!confirm('ВНИМАНИЕ: Это выполнит полный сброс приложения. Продолжить?')) {
+                return;
+            }
+            
+            await clearCache();
+            
+            // Дополнительная очистка
+            document.cookie.split(";").forEach(cookie => {
+                document.cookie = cookie.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+            });
+            
+            alert('Полный сброс выполнен. Приложение перезагрузится.');
+            window.location.href = 'index.html?hardreset=' + Date.now();
+        }
+        
+        function goHome() {
+            window.location.href = 'index.html';
+        }
+        
+        // Показать информацию о кэше
+        async function showCacheInfo() {
+            const cacheInfo = document.getElementById('cacheInfo');
+            
+            try {
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    cacheInfo.innerHTML = `
+                        <h3>Информация о кэше:</h3>
+                        <p>Кэшей: ${cacheNames.length}</p>
+                        <ul>
+                            ${cacheNames.map(name => `<li>${name}</li>`).join('')}
+                        </ul>
+                    `;
+                }
+            } catch (error) {
+                cacheInfo.innerHTML = `<p>Не удалось получить информацию: ${error.message}</p>`;
+            }
+        }
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', () => {
+            showCacheInfo();
+            
+            // Автоматическая очистка при открытии с параметром auto
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('auto')) {
+                setTimeout(clearCache, 1000);
+            }
+        });
+    </script>
+</body>
+</html>
