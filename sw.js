@@ -1,4 +1,4 @@
-const CACHE_NAME = 'liga-cache-v1';
+const CACHE_NAME = 'liga-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -6,26 +6,58 @@ const urlsToCache = [
   '/style.css',
   '/main.js',
   '/admin.js',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/manifest.json'
 ];
 
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(urlsToCache))
+      .then(cache => {
+        console.log('Кэширование файлов приложения');
+        return cache.addAll(urlsToCache);
+      })
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('fetch', event => {
+  // Не кэшируем внешние ресурсы и API запросы
+  if (event.request.url.includes('unsplash.com') || 
+      event.request.url.includes('api.github.com') ||
+      event.request.url.includes('/api/')) {
+    return fetch(event.request);
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then(response => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+        return fetch(event.request).then(response => {
+          // Кэшируем только успешные ответы
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME)
+            .then(cache => {
+              cache.put(event.request, responseToCache);
+            });
+          
+          return response;
+        });
+      })
+      .catch(() => {
+        // При ошибке сети - показываем fallback
+        if (event.request.mode === 'navigate') {
+          return caches.match('/index.html');
+        }
+        return new Response('Оффлайн режим', {
+          status: 503,
+          statusText: 'Нет соединения'
+        });
       })
   );
 });
@@ -36,10 +68,11 @@ self.addEventListener('activate', event => {
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
+            console.log('Удаление старого кэша:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
