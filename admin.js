@@ -542,21 +542,25 @@ const adminInstallBtn = document.getElementById('adminInstallBtn');
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     adminDeferredPrompt = e;
-    if (adminInstallBtn) adminInstallBtn.style.display = 'block';
+    if (adminInstallBtn) {
+        adminInstallBtn.style.display = 'block';
+    }
     
-    adminInstallBtn?.addEventListener('click', () => {
-        if (adminDeferredPrompt) {
-            adminInstallBtn.style.display = 'none';
-            adminDeferredPrompt.prompt();
-            adminDeferredPrompt.userChoice.then((choiceResult) => {
-                adminDeferredPrompt = null;
-            });
-        }
+    adminInstallBtn?.addEventListener('click', async () => {
+        if (!adminDeferredPrompt) return;
+        
+        adminInstallBtn.style.display = 'none';
+        adminDeferredPrompt.prompt();
+        
+        const { outcome } = await adminDeferredPrompt.userChoice;
+        console.log(`Админ ${outcome} установку`);
+        adminDeferredPrompt = null;
     });
 });
 
-setInterval(saveAllData, 30000);
-
-if (document.getElementById('adminContent').style.display === 'block') {
-    loadAdminData();
+// Скрываем кнопку, если приложение уже установлено
+if (window.matchMedia('(display-mode: standalone)').matches || 
+    window.navigator.standalone === true) {
+    if (adminInstallBtn) adminInstallBtn.style.display = 'none';
 }
+
