@@ -220,40 +220,76 @@ app.post('/api/register', async (req, res) => {
 
 // Save all data (admin endpoint)
 app.post('/api/save', async (req, res) => {
-    try {
-        console.log('Saving data to Gist...');
-        
-        const data = req.body;
-        
-        // Add save activity
-        if (!data.activities) {
-            data.activities = [];
-        }
-        
-        data.activities.unshift({
-            id: Date.now(),
-            type: 'save',
-            message: 'Данные сохранены администратором',
-            date: new Date().toISOString(),
-            user: 'admin'
-        });
-        
-        await updateGist(data);
-        
-        res.json({ 
-            success: true, 
-            message: 'Data saved successfully',
-            timestamp: new Date().toISOString() 
-        });
-        
-    } catch (error) {
-        console.error('Error saving data:', error);
-        res.status(500).json({ 
-            error: 'Failed to save data',
-            message: error.message 
-        });
+  try {
+    console.log('Сохранение данных в Gist...');
+    
+    const data = req.body;
+    
+    // Проверяем наличие обязательных полей
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({ error: 'Неверные данные' });
     }
+    
+    // Убедимся, что есть все необходимые массивы
+    const dataToSave = {
+      league: data.league || INITIAL_DATA.league,
+      standings: data.standings || [],
+      matches: data.matches || [],
+      news: data.news || [],
+      pendingRegistrations: data.pendingRegistrations || [],
+      activities: (data.activities || []).slice(0, 50)
+    };
+    
+    // Логируем что сохраняем
+    console.log('Сохраняем данные:', {
+      teams: dataToSave.standings.length,
+      matches: dataToSave.matches.length,
+      news: dataToSave.news.length
+    });
+    
+    // Сохраняем в Gist
+    const response = await fetch(GIST_URL, {
+      method: 'PATCH',
+      headers: AUTH_HEADERS,
+      body: JSON.stringify({
+        description: 'ЛЪибилская Лига - данные чемпионата FC Mobile',
+        files: {
+          [CONFIG.FILE_NAME]: {
+            content: JSON.stringify(dataToSave, null, 2)
+          }
+        }
+      })
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GitHub API ошибка:', response.status, errorText);
+      return res.status(500).json({ 
+        error: 'Ошибка сохранения в GitHub',
+        details: errorText.substring(0, 200)
+      });
+    }
+    
+    const result = await response.json();
+    console.log('✅ Данные сохранены успешно');
+    
+    res.json({ 
+      success: true, 
+      message: 'Data saved successfully',
+      timestamp: new Date().toISOString(),
+      gistUrl: result.html_url
+    });
+    
+  } catch (error) {
+    console.error('Ошибка сохранения:', error);
+    res.status(500).json({ 
+      error: 'Failed to save data',
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 });
+
 
 // Backup endpoint
 app.get('/api/backup', async (req, res) => {
@@ -397,3 +433,4 @@ app.listen(PORT, () => {
     console.log(`   - GIST_ID: ваш_идентификатор_gist`);
     console.log(`   - GITHUB_TOKEN: ваш_токен_github`);
 });
+
