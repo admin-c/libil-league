@@ -28,9 +28,13 @@ async function loadData() {
         appData = data;
         updateUI();
         
-        if (userTeam && data.standings.find(t => t.team === userTeam)) {
-            document.getElementById('alreadyRegisteredBtn').style.display = 'block';
-            document.getElementById('registrationForm').style.display = 'none';
+        // Проверяем, есть ли элементы на странице
+        const alreadyRegisteredBtn = document.getElementById('alreadyRegisteredBtn');
+        const registrationForm = document.getElementById('registrationForm');
+        
+        if (alreadyRegisteredBtn && registrationForm && userTeam && data.standings.find(t => t.team === userTeam)) {
+            alreadyRegisteredBtn.style.display = 'block';
+            registrationForm.style.display = 'none';
         }
     } catch (error) {
         console.error('Ошибка:', error);
@@ -39,13 +43,26 @@ async function loadData() {
 }
 
 function updateUI() {
-    updateStandingsTable();
-    updateMatches();
-    updateNews();
+    // Обновляем только те элементы, которые есть на странице
+    if (document.querySelector('#standingsTable tbody')) {
+        updateStandingsTable();
+    }
+    
+    if (document.getElementById('upcomingMatches') || 
+        document.getElementById('liveMatches') || 
+        document.getElementById('finishedMatches')) {
+        updateMatches();
+    }
+    
+    if (document.getElementById('newsContainer')) {
+        updateNews();
+    }
 }
 
 function updateStandingsTable() {
     const tbody = document.querySelector('#standingsTable tbody');
+    if (!tbody) return;
+    
     tbody.innerHTML = '';
     
     appData.standings.sort((a, b) => b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst));
@@ -72,56 +89,68 @@ function updateMatches() {
     const now = new Date();
     
     // Предстоящие матчи
-    const upcoming = appData.matches.filter(m => new Date(m.date) > now && m.status === 'scheduled');
-    document.getElementById('upcomingMatches').innerHTML = upcoming.map(match => `
-        <div class="match-card">
-            <div class="match-teams">
-                <span class="team">${match.homeTeam}</span>
-                <span class="match-score">VS</span>
-                <span class="team">${match.awayTeam}</span>
+    const upcomingMatches = document.getElementById('upcomingMatches');
+    if (upcomingMatches) {
+        const upcoming = appData.matches.filter(m => new Date(m.date) > now && m.status === 'scheduled');
+        upcomingMatches.innerHTML = upcoming.map(match => `
+            <div class="match-card">
+                <div class="match-teams">
+                    <span class="team">${match.homeTeam}</span>
+                    <span class="match-score">VS</span>
+                    <span class="team">${match.awayTeam}</span>
+                </div>
+                <div class="match-info">
+                    <div class="match-date">${formatDate(match.date)}</div>
+                    <div class="match-time">${match.time || 'Время уточняется'}</div>
+                </div>
             </div>
-            <div class="match-info">
-                <div class="match-date">${formatDate(match.date)}</div>
-                <div class="match-time">${match.time || 'Время уточняется'}</div>
-            </div>
-        </div>
-    `).join('') || '<p>Нет запланированных матчей</p>';
+        `).join('') || '<p>Нет запланированных матчей</p>';
+    }
     
     // LIVE матчи
-    const live = appData.matches.filter(m => m.status === 'live');
-    document.getElementById('liveMatches').innerHTML = live.map(match => `
-        <div class="match-card live">
-            <div class="match-teams">
-                <span class="team">${match.homeTeam}</span>
-                <span class="match-score">${match.homeScore || 0} : ${match.awayScore || 0}</span>
-                <span class="team">${match.awayTeam}</span>
+    const liveMatches = document.getElementById('liveMatches');
+    if (liveMatches) {
+        const live = appData.matches.filter(m => m.status === 'live');
+        liveMatches.innerHTML = live.map(match => `
+            <div class="match-card live">
+                <div class="match-teams">
+                    <span class="team">${match.homeTeam}</span>
+                    <span class="match-score">${match.homeScore || 0} : ${match.awayScore || 0}</span>
+                    <span class="team">${match.awayTeam}</span>
+                </div>
+                <div class="match-info">
+                    <div class="match-status" style="color: var(--accent);">● LIVE</div>
+                    <div class="match-minute">${match.minute || '1'}'</div>
+                </div>
             </div>
-            <div class="match-info">
-                <div class="match-status" style="color: var(--accent);">● LIVE</div>
-                <div class="match-minute">${match.minute || '1'}'</div>
-            </div>
-        </div>
-    `).join('') || '<p>Нет матчей в прямом эфире</p>';
+        `).join('') || '<p>Нет матчей в прямом эфире</p>';
+    }
     
     // Завершенные матчи
-    const finished = appData.matches.filter(m => m.status === 'finished' || new Date(m.date) < now);
-    document.getElementById('finishedMatches').innerHTML = finished.map(match => `
-        <div class="match-card">
-            <div class="match-teams">
-                <span class="team">${match.homeTeam}</span>
-                <span class="match-score">${match.homeScore || 0} : ${match.awayScore || 0}</span>
-                <span class="team">${match.awayTeam}</span>
+    const finishedMatches = document.getElementById('finishedMatches');
+    if (finishedMatches) {
+        const finished = appData.matches.filter(m => m.status === 'finished' || new Date(m.date) < now);
+        finishedMatches.innerHTML = finished.map(match => `
+            <div class="match-card">
+                <div class="match-teams">
+                    <span class="team">${match.homeTeam}</span>
+                    <span class="match-score">${match.homeScore || 0} : ${match.awayScore || 0}</span>
+                    <span class="team">${match.awayTeam}</span>
+                </div>
+                <div class="match-info">
+                    <div class="match-date">${formatDate(match.date)}</div>
+                    <div class="match-result">${getMatchResult(match)}</div>
+                </div>
             </div>
-            <div class="match-info">
-                <div class="match-date">${formatDate(match.date)}</div>
-                <div class="match-result">${getMatchResult(match)}</div>
-            </div>
-        </div>
-    `).join('') || '<p>Нет завершенных матчей</p>';
+        `).join('') || '<p>Нет завершенных матчей</p>';
+    }
 }
 
 function updateNews() {
-    document.getElementById('newsContainer').innerHTML = appData.news.slice(0, 6).map(item => `
+    const newsContainer = document.getElementById('newsContainer');
+    if (!newsContainer) return;
+    
+    newsContainer.innerHTML = appData.news.slice(0, 6).map(item => `
         <div class="news-card">
             <div class="news-date">${formatDate(item.date)}</div>
             <h3>${item.title}</h3>
@@ -147,8 +176,8 @@ function getMatchResult(match) {
 
 // ===== РЕГИСТРАЦИЯ КОМАНДЫ =====
 async function registerTeam() {
-    const teamName = document.getElementById('teamName').value.trim();
-    const ownerName = document.getElementById('ownerName').value.trim();
+    const teamName = document.getElementById('teamName')?.value.trim();
+    const ownerName = document.getElementById('ownerName')?.value.trim();
     
     if (!teamName || !ownerName) {
         showNotification('Заполните все поля', 'error');
@@ -177,8 +206,12 @@ async function registerTeam() {
         
         if (response.ok) {
             showNotification('Заявка отправлена! Ожидайте подтверждения администратора.', 'success');
-            document.getElementById('teamName').value = '';
-            document.getElementById('ownerName').value = '';
+            
+            const teamNameInput = document.getElementById('teamName');
+            const ownerNameInput = document.getElementById('ownerName');
+            if (teamNameInput) teamNameInput.value = '';
+            if (ownerNameInput) ownerNameInput.value = '';
+            
             setTimeout(loadData, 2000);
         } else {
             throw new Error('Ошибка отправки');
@@ -203,7 +236,7 @@ function showNotification(message, type = 'info') {
         top: 20px;
         right: 20px;
         padding: 1rem 2rem;
-        background: ${type === 'error' ? 'var(--accent)' : type === 'success' ? 'var(--success)' : 'var(--secondary)'};
+        background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
         color: white;
         border-radius: 10px;
         z-index: 10000;
@@ -215,77 +248,114 @@ function showNotification(message, type = 'info') {
 }
 
 function showTab(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    if (tabBtns.length === 0 || tabContents.length === 0) return;
+    
+    tabBtns.forEach(btn => {
         btn.classList.remove('active');
         if (btn.textContent.includes(tabName.charAt(0).toUpperCase() + tabName.slice(1))) {
             btn.classList.add('active');
         }
     });
     
-    document.querySelectorAll('.tab-content').forEach(content => {
+    tabContents.forEach(content => {
         content.style.display = 'none';
     });
-    document.getElementById(tabName).style.display = 'block';
+    
+    const targetTab = document.getElementById(tabName);
+    if (targetTab) {
+        targetTab.style.display = 'block';
+    }
 }
 
 // ===== PWA УСТАНОВКА =====
 let deferredPrompt;
 const installBtn = document.getElementById('installBtn');
 
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    installBtn.style.display = 'block';
-    
-    installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
+if (installBtn) {
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.style.display = 'block';
         
-        installBtn.style.display = 'none';
-        deferredPrompt.prompt();
-        
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`Пользователь ${outcome} установку`);
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            
+            installBtn.style.display = 'none';
+            deferredPrompt.prompt();
+            
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`Пользователь ${outcome} установку`);
+            deferredPrompt = null;
+        });
+    });
+
+    window.addEventListener('appinstalled', () => {
+        console.log('Приложение успешно установлено');
+        if (installBtn) installBtn.style.display = 'none';
         deferredPrompt = null;
     });
-});
 
-window.addEventListener('appinstalled', () => {
-    console.log('Приложение успешно установлено');
-    installBtn.style.display = 'none';
-    deferredPrompt = null;
-});
-
-// Скрываем кнопку, если приложение уже установлено
-if (window.matchMedia('(display-mode: standalone)').matches || 
-    window.navigator.standalone === true) {
-    installBtn.style.display = 'none';
+    // Скрываем кнопку, если приложение уже установлено
+    if (window.matchMedia('(display-mode: standalone)').matches || 
+        window.navigator.standalone === true) {
+        installBtn.style.display = 'none';
+    }
 }
+
 // ===== ИНИЦИАЛИЗАЦИЯ =====
 document.addEventListener('DOMContentLoaded', () => {
-    document.querySelector('.menu-toggle').addEventListener('click', () => {
-        document.querySelector('.nav-links').classList.toggle('active');
-    });
+    console.log('DOM загружен, страница:', window.location.pathname);
     
+    // Мобильное меню (только если есть элементы)
+    const menuToggle = document.querySelector('.menu-toggle');
+    const navLinks = document.querySelector('.nav-links');
+    
+    if (menuToggle && navLinks) {
+        menuToggle.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+        });
+    }
+    
+    // Плавная навигация (только для якорных ссылок на текущей странице)
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
-            e.preventDefault();
             const targetId = this.getAttribute('href');
+            if (targetId === '#') return;
+            
+            e.preventDefault();
+            
             if (targetId === '#home') {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                document.querySelector(targetId)?.scrollIntoView({ behavior: 'smooth' });
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth' });
+                }
             }
-            document.querySelector('.nav-links').classList.remove('active');
+            
+            // Закрываем мобильное меню
+            if (navLinks) navLinks.classList.remove('active');
         });
     });
     
+    // Загружаем данные
     loadData();
+    
+    // Автообновление каждые 30 секунд
     setInterval(loadData, 30000);
 });
 
+// Регистрация Service Worker для PWA
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/sw.js?v=5')
         .then(() => console.log('Service Worker зарегистрирован'))
         .catch(err => console.log('Ошибка регистрации SW:', err));
 }
 
+// Экспортируем функции для использования в HTML
+window.registerTeam = registerTeam;
+window.showRegisteredMenu = showRegisteredMenu;
+window.showTab = showTab;
