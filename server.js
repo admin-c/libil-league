@@ -2,7 +2,7 @@ const express = require('express');
 const fetch = require('node-fetch');
 const app = express();
 
-// Конфигурация из переменных окружения Render.com
+// Конфигурация из переменных окружения
 const CONFIG = {
     GIST_ID: process.env.GIST_ID || 'c37ece5d8832c31be098e4d39e8cb328',
     GITHUB_TOKEN: process.env.GITHUB_TOKEN,
@@ -13,63 +13,142 @@ const GIST_URL = `https://api.github.com/gists/${CONFIG.GIST_ID}`;
 const AUTH_HEADERS = {
     'Authorization': `Bearer ${CONFIG.GITHUB_TOKEN}`,
     'User-Agent': 'Liga-App',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Accept': 'application/vnd.github.v3+json'
 };
 
-// Начальные данные
+// Начальные данные с полной структурой
 const INITIAL_DATA = {
-    teams: [],
+    league: {
+        name: "ЛЪибилская Лига",
+        description: "Чемпионат по FC Mobile. Матчи проходят каждые выходные.",
+        season: 2026,
+        points: {
+            win: 3,
+            draw: 1,
+            loss: 0
+        },
+        settings: {
+            autoSave: true,
+            notifications: true,
+            adminPassword: "Ali"
+        }
+    },
     standings: [],
     matches: [],
     news: [
         {
             id: 1,
             title: "Добро пожаловать в ЛЪибилскую Лигу!",
-            content: "Чемпионат по FC Mobile начинается 24.01.2026. Регистрируйте команды!",
+            content: "Чемпионат по FC Mobile начинается 24.01.2026. Регистрируйте команды! Первые матчи уже скоро.",
+            category: "announcements",
+            image: null,
             date: "2026-01-20T10:00:00Z",
-            image: null
+            author: "Администратор"
+        },
+        {
+            id: 2,
+            title: "Регистрация команд открыта",
+            content: "Вы можете зарегистрировать свою команду до 23.01.2026. Участие бесплатное!",
+            category: "updates",
+            image: null,
+            date: "2026-01-19T14:30:00Z",
+            author: "Администратор"
         }
     ],
-    pendingRegistrations: []
+    pendingRegistrations: [],
+    activities: [
+        {
+            id: 1,
+            type: "system",
+            message: "Система запущена и готова к работе",
+            date: new Date().toISOString(),
+            user: "system"
+        }
+    ]
 };
 
 // Middleware
 app.use(express.json());
 app.use(express.static('.'));
 
-// Прокси для GitHub API
+// CORS headers
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        gist_id: CONFIG.GIST_ID,
+        version: '2.0.0'
+    });
+});
+
+// Get all data
 app.get('/api/data', async (req, res) => {
     try {
-        const response = await fetch(GIST_URL, { headers: AUTH_HEADERS });
+        console.log('Fetching data from GitHub Gist...');
+        
+        const response = await fetch(GIST_URL, { 
+            headers: AUTH_HEADERS,
+            timeout: 10000
+        });
         
         if (!response.ok) {
             if (response.status === 404) {
-                // Если gist не найден, создаем его
+                console.log('Gist not found, creating initial data...');
                 await createInitialGist();
                 return res.json(INITIAL_DATA);
             }
-            throw new Error(`GitHub API error: ${response.status}`);
+            throw new Error(`GitHub API error: ${response.status} - ${response.statusText}`);
         }
         
         const gist = await response.json();
         
-        if (gist.files && gist.files[CONFIG.FILE_NAME]) {
-            const content = JSON.parse(gist.files[CONFIG.FILE_NAME].content);
-            res.json(content);
-        } else {
-            // Если файл не существует в gist
+        if (!gist.files || !gist.files[CONFIG.FILE_NAME]) {
+            console.log('Data file not found in gist, creating...');
             await updateGist(INITIAL_DATA);
-            res.json(INITIAL_DATA);
+            return res.json(INITIAL_DATA);
         }
+        
+        const fileContent = gist.files[CONFIG.FILE_NAME].content;
+        const data = JSON.parse(fileContent);
+        
+        // Ensure data has all required fields
+        const completeData = {
+            ...INITIAL_DATA,
+            ...data,
+            standings: data.standings || [],
+            matches: data.matches || [],
+            news: data.news || INITIAL_DATA.news,
+            pendingRegistrations: data.pendingRegistrations || [],
+            activities: data.activities || INITIAL_DATA.activities
+        };
+        
+        res.json(completeData);
+        
     } catch (error) {
-        console.error('Ошибка загрузки данных:', error);
-        res.status(500).json({ error: 'Ошибка загрузки данных' });
+        console.error('Error loading data:', error.message);
+        res.status(500).json({ 
+            error: 'Failed to load data',
+            message: error.message,
+            fallback: true,
+            data: INITIAL_DATA
+        });
     }
 });
 
+// Register new team
 app.post('/api/register', async (req, res) => {
     try {
-        // Загружаем текущие данные
+        console.log('Processing registration:', req.body);
+        
+        // Load current data
         const dataResponse = await fetch(GIST_URL, { headers: AUTH_HEADERS });
         let data = INITIAL_DATA;
         
@@ -80,40 +159,133 @@ app.post('/api/register', async (req, res) => {
             }
         }
         
-        // Добавляем новую заявку
-        const newRegistration = req.body;
+        const registration = req.body;
+        
+        // Validate registration
+        if (!registration.team || !registration.owner) {
+            return res.status(400).json({ error: 'Team name and owner are required' });
+        }
+        
+        // Check for duplicates in standings
+        if (data.standings.some(t => t.team.toLowerCase() === registration.team.toLowerCase())) {
+            return res.status(400).json({ error: 'Team already exists in the league' });
+        }
+        
+        // Check for duplicates in pending registrations
+        if (data.pendingRegistrations?.some(r => r.team.toLowerCase() === registration.team.toLowerCase())) {
+            return res.status(400).json({ error: 'Registration already pending for this team' });
+        }
+        
+        // Add registration
+        registration.id = Date.now();
+        registration.date = new Date().toISOString();
+        registration.status = 'pending';
+        
         if (!data.pendingRegistrations) {
             data.pendingRegistrations = [];
         }
-        data.pendingRegistrations.push(newRegistration);
         
-        // Сохраняем обновленные данные
+        data.pendingRegistrations.push(registration);
+        
+        // Add activity
+        if (!data.activities) {
+            data.activities = [];
+        }
+        
+        data.activities.unshift({
+            id: Date.now(),
+            type: 'registration',
+            message: `Новая заявка: ${registration.team} (${registration.owner})`,
+            date: new Date().toISOString(),
+            user: 'system'
+        });
+        
+        // Save to Gist
         await updateGist(data);
-        res.json({ success: true });
+        
+        res.json({ 
+            success: true, 
+            message: 'Registration submitted successfully',
+            registrationId: registration.id 
+        });
+        
     } catch (error) {
-        console.error('Ошибка регистрации:', error);
-        res.status(500).json({ error: 'Ошибка регистрации' });
+        console.error('Error processing registration:', error);
+        res.status(500).json({ 
+            error: 'Failed to process registration',
+            message: error.message 
+        });
     }
 });
 
+// Save all data (admin endpoint)
 app.post('/api/save', async (req, res) => {
     try {
-        await updateGist(req.body);
-        res.json({ success: true });
+        console.log('Saving data to Gist...');
+        
+        const data = req.body;
+        
+        // Add save activity
+        if (!data.activities) {
+            data.activities = [];
+        }
+        
+        data.activities.unshift({
+            id: Date.now(),
+            type: 'save',
+            message: 'Данные сохранены администратором',
+            date: new Date().toISOString(),
+            user: 'admin'
+        });
+        
+        await updateGist(data);
+        
+        res.json({ 
+            success: true, 
+            message: 'Data saved successfully',
+            timestamp: new Date().toISOString() 
+        });
+        
     } catch (error) {
-        console.error('Ошибка сохранения:', error);
-        res.status(500).json({ error: 'Ошибка сохранения' });
+        console.error('Error saving data:', error);
+        res.status(500).json({ 
+            error: 'Failed to save data',
+            message: error.message 
+        });
     }
 });
 
-// Функция создания начального gist
+// Backup endpoint
+app.get('/api/backup', async (req, res) => {
+    try {
+        const response = await fetch(GIST_URL, { headers: AUTH_HEADERS });
+        const gist = await response.json();
+        
+        if (gist.files && gist.files[CONFIG.FILE_NAME]) {
+            const data = JSON.parse(gist.files[CONFIG.FILE_NAME].content);
+            
+            res.setHeader('Content-Disposition', `attachment; filename="liga-backup-${Date.now()}.json"`);
+            res.setHeader('Content-Type', 'application/json');
+            res.send(JSON.stringify(data, null, 2));
+        } else {
+            res.status(404).json({ error: 'No data found' });
+        }
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        res.status(500).json({ error: 'Failed to create backup' });
+    }
+});
+
+// Helper function to create initial Gist
 async function createInitialGist() {
     try {
+        console.log('Creating initial Gist...');
+        
         const response = await fetch('https://api.github.com/gists', {
             method: 'POST',
             headers: AUTH_HEADERS,
             body: JSON.stringify({
-                description: 'ЛЪибилская Лига - данные чемпионата',
+                description: 'ЛЪибилская Лига - данные чемпионата FC Mobile',
                 public: false,
                 files: {
                     [CONFIG.FILE_NAME]: {
@@ -124,45 +296,104 @@ async function createInitialGist() {
         });
         
         if (!response.ok) {
-            throw new Error('Не удалось создать gist');
+            const errorText = await response.text();
+            throw new Error(`Failed to create Gist: ${response.status} - ${errorText}`);
         }
         
-        return await response.json();
+        const result = await response.json();
+        console.log('Gist created successfully:', result.id);
+        return result;
+        
     } catch (error) {
-        console.error('Ошибка создания gist:', error);
+        console.error('Error creating Gist:', error);
         throw error;
     }
 }
 
-// Функция обновления Gist
+// Helper function to update Gist
 async function updateGist(data) {
-    const response = await fetch(GIST_URL, {
-        method: 'PATCH',
-        headers: AUTH_HEADERS,
-        body: JSON.stringify({
-            files: {
-                [CONFIG.FILE_NAME]: {
-                    content: JSON.stringify(data, null, 2)
+    try {
+        console.log('Updating Gist...');
+        
+        // Clean up data before saving
+        const cleanData = {
+            ...data,
+            // Ensure arrays exist
+            standings: data.standings || [],
+            matches: data.matches || [],
+            news: data.news || [],
+            pendingRegistrations: data.pendingRegistrations || [],
+            activities: (data.activities || []).slice(0, 50) // Keep last 50 activities
+        };
+        
+        const response = await fetch(GIST_URL, {
+            method: 'PATCH',
+            headers: AUTH_HEADERS,
+            body: JSON.stringify({
+                description: 'ЛЪибилская Лига - данные чемпионата FC Mobile',
+                files: {
+                    [CONFIG.FILE_NAME]: {
+                        content: JSON.stringify(cleanData, null, 2)
+                    }
                 }
-            }
-        })
-    });
-    
-    if (!response.ok) {
-        throw new Error(`GitHub API error: ${response.status}`);
+            })
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to update Gist: ${response.status} - ${errorText}`);
+        }
+        
+        console.log('Gist updated successfully');
+        return await response.json();
+        
+    } catch (error) {
+        console.error('Error updating Gist:', error);
+        throw error;
     }
-    
-    return response.json();
 }
 
-// Редирект на админку
+// Serve admin page
 app.get('/admin', (req, res) => {
-    res.redirect('/admin.html');
+    res.sendFile(__dirname + '/admin.html');
 });
 
+// Serve all other pages
+app.get('*', (req, res) => {
+    const page = req.path.replace('/', '');
+    const validPages = ['index.html', 'table.html', 'fixtures.html', 'news.html', 'admin.html'];
+    
+    if (validPages.includes(page)) {
+        res.sendFile(__dirname + '/' + page);
+    } else if (page === '' || !page.includes('.')) {
+        res.sendFile(__dirname + '/index.html');
+    } else {
+        res.status(404).send('Page not found');
+    }
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Server error:', err);
+    res.status(500).json({
+        error: 'Internal server error',
+        message: err.message
+    });
+});
+
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
-    console.log(`GIST_ID: ${CONFIG.GIST_ID}`);
-    console.log(`GitHub Token: ${CONFIG.GITHUB_TOKEN ? 'Установлен' : 'Отсутствует'}`);
+    console.log(`🚀 Сервер запущен на порту ${PORT}`);
+    console.log(`📊 GIST_ID: ${CONFIG.GIST_ID}`);
+    console.log(`🔑 GitHub Token: ${CONFIG.GITHUB_TOKEN ? 'Настроен' : 'ОТСУТСТВУЕТ (нужен для работы)'}`);
+    console.log(`🌐 Доступные страницы:`);
+    console.log(`   • Главная: http://localhost:${PORT}`);
+    console.log(`   • Таблица: http://localhost:${PORT}/table.html`);
+    console.log(`   • Расписание: http://localhost:${PORT}/fixtures.html`);
+    console.log(`   • Новости: http://localhost:${PORT}/news.html`);
+    console.log(`   • Админ-панель: http://localhost:${PORT}/admin.html`);
+    console.log(`\n⚠️  ВАЖНО: Убедитесь, что в Render.com настроены переменные окружения:`);
+    console.log(`   - GIST_ID: ваш_идентификатор_gist`);
+    console.log(`   - GITHUB_TOKEN: ваш_токен_github`);
 });
