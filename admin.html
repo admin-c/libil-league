@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель | ЛЪибилская Лига</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Дополнительные стили для админки */
+        .admin-container {
+            padding: 2rem 5%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .admin-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--secondary);
+            font-weight: 500;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: var(--secondary);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+        
+        .admin-btn {
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-save {
+            background: var(--success);
+            color: var(--primary);
+        }
+        
+        .btn-delete {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .btn-edit {
+            background: var(--warning);
+            color: var(--primary);
+        }
+        
+        .btn-generate {
+            background: linear-gradient(45deg, #9d4edd, #560bad);
+            color: white;
+        }
+        
+        .list-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .match-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .score-input {
+            width: 50px;
+            text-align: center;
+            padding: 0.3rem;
+            border-radius: 5px;
+            border: 1px solid var(--secondary);
+            background: rgba(0,0,0,0.3);
+            color: white;
+        }
+        
+        .match-live-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(255, 0, 85, 0.1);
+            border-radius: 10px;
+        }
+        
+        #passwordPrompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 26, 42, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        
+        .password-box {
+            background: var(--card-bg);
+            padding: 3rem;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+    <div id="passwordPrompt">
+        <div class="password-box">
+            <h2>Доступ к админ-панели</h2>
+            <input type="password" id="adminPassword" class="form-control" placeholder="Введите пароль" style="margin: 2rem 0;">
+            <button class="btn-primary" onclick="checkPassword()">Войти</button>
+        </div>
+    </div>
+    
+    <div class="admin-container" id="adminContent" style="display:none;">
+        <header style="text-align: center; margin-bottom: 3rem;">
+            <h1 class="animate-charcter">Админ-панель</h1>
+            <p>ЛЪибилская Лига FC Mobile</p>
+            <div class="btn-group" style="justify-content: center;">
+                <button class="admin-btn btn-save" onclick="saveAllData()">💾 Сохранить все изменения</button>
+                <button class="admin-btn" onclick="location.reload()">🔄 Обновить данные</button>
+                <button class="btn-install" id="adminInstallBtn" style="display:none;">📱 Установить админ-панель</button>
+            </div>
+        </header>
+        
+        <div class="admin-grid">
+            <!-- Секция: Заявки на регистрацию -->
+            <section class="admin-section">
+                <h2>📝 Заявки на регистрацию</h2>
+                <div id="pendingRegistrations">
+                    <!-- Заявки загружаются из API -->
+                </div>
+            </section>
+            
+            <!-- Секция: Управление командами -->
+            <section class="admin-section">
+                <h2>⚽ Управление командами</h2>
+                <div class="form-group">
+                    <label>Добавить команду вручную:</label>
+                    <input type="text" id="newTeamName" class="form-control" placeholder="Название команды">
+                    <input type="text" id="newTeamOwner" class="form-control" placeholder="Владелец" style="margin-top: 0.5rem;">
+                    <button class="admin-btn btn-save" onclick="addTeamManually()" style="margin-top: 1rem;">Добавить команду</button>
+                </div>
+                <h3 style="margin-top: 2rem;">Текущие команды:</h3>
+                <div id="teamsList"></div>
+            </section>
+            
+            <!-- Секция: Управление матчами -->
+            <section class="admin-section">
+                <h2>📅 Управление матчами</h2>
+                <div class="btn-group">
+                    <button class="admin-btn btn-generate" onclick="generateRound()">🎲 Автожеребьевка раунда</button>
+                    <button class="admin-btn" onclick="showMatchForm()">➕ Добавить матч вручную</button>
+                </div>
+                
+                <div id="matchForm" style="display:none; margin-top: 2rem;">
+                    <div class="form-group">
+                        <label>Хозяева:</label>
+                        <select id="matchHome" class="form-control"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Гости:</label>
+                        <select id="matchAway" class="form-control"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Дата:</label>
+                        <input type="date" id="matchDate" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Время:</label>
+                        <input type="time" id="matchTime" class="form-control">
+                    </div>
+                    <button class="admin-btn btn-save" onclick="addMatch()">Добавить матч</button>
+                </div>
+                
+                <h3 style="margin-top: 2rem;">Предстоящие матчи:</h3>
+                <div id="upcomingMatchesAdmin"></div>
+                
+                <h3>LIVE матчи:</h3>
+                <div id="liveMatchesAdmin"></div>
+                
+                <h3>Завершенные матчи:</h3>
+                <div id="finishedMatchesAdmin"></div>
+            </section>
+            
+            <!-- Секция: Управление новостями -->
+            <section class="admin-section">
+                <h2>📰 Управление новостями</h2>
+                <div class="form-group">
+                    <label>Заголовок новости:</label>
+                    <input type="text" id="newsTitle" class="form-control" placeholder="Введите заголовок">
+                </div>
+                <div class="form-group">
+                    <label>Текст новости:</label>
+                    <textarea id="newsContent" class="form-control" rows="4" placeholder="Введите текст"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>URL изображения (опционально):</label>
+                    <input type="text" id="newsImage" class="form-control" placeholder="https://example.com/image.jpg">
+                </div>
+                <button class="admin-btn btn-save" onclick="addNews()">Добавить новость</button>
+                
+                <h3 style="margin-top: 2rem;">Текущие новости:</h3>
+                <div id="newsListAdmin"></div>
+            </section>
+            
+            <!-- Секция: Турнирная таблица -->
+            <section class="admin-section">
+                <h2>📊 Редактирование таблицы</h2>
+                <p>Редактируйте очки, голы и статистику команд:</p>
+                <div id="standingsEditor"></div>
+            </section>
+        </div>
+        
+        <footer style="text-align: center; margin-top: 5rem; padding: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
+            <p>Админ-панель ЛЪибилской Лиги | Пароль: <strong>Ali</strong></p>
+            <p>Все изменения сохраняются автоматически в облако</p>
+        </footer>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html>

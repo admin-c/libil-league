@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ЛЪибилская Лига - FC Mobile</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <meta name="theme-color" content="#0a1a2a">
+</head>
+<body>
+    <div class="background-animation"></div>
+    <div class="blur-overlay"></div>
+
+    <header>
+        <nav class="main-nav">
+            <div class="logo">ЛЪибилская Лига</div>
+            <div class="nav-links">
+                <a href="#home" class="active">Главная</a>
+                <a href="#table">Турнирная таблица</a>
+                <a href="#fixtures">Расписание</a>
+                <a href="#news">Новости</a>
+                <button class="btn-install" id="installBtn" style="display:none;">Установить приложение</button>
+            </div>
+            <button class="menu-toggle">☰</button>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="hero">
+            <div class="hero-content">
+                <h1 class="league-title animate-charcter">ЛЪибилская Лига</h1>
+                <p class="league-subtitle">Чемпионат по FC Mobile</p>
+                <div class="registration-form" id="registrationForm">
+                    <input type="text" id="teamName" placeholder="Название команды" required>
+                    <input type="text" id="ownerName" placeholder="Имя владельца" required>
+                    <button class="btn-primary" onclick="registerTeam()">Записаться на чемпионат</button>
+                    <p class="form-note">Заявка будет отправлена на подтверждение администратору</p>
+                </div>
+                <button class="btn-secondary" id="alreadyRegisteredBtn" onclick="showRegisteredMenu()" style="display:none;">Вы уже записаны →</button>
+            </div>
+        </section>
+
+        <section id="table" class="content-section">
+            <h2>Турнирная таблица</h2>
+            <div class="table-container">
+                <table id="standingsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Команда</th>
+                            <th>И</th>
+                            <th>В</th>
+                            <th>Н</th>
+                            <th>П</th>
+                            <th>ГЗ</th>
+                            <th>ГП</th>
+                            <th>РМ</th>
+                            <th>О</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Данные загружаются из API -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="fixtures" class="content-section">
+            <h2>Расписание и результаты</h2>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('upcoming')">Предстоящие</button>
+                <button class="tab-btn" onclick="showTab('live')">LIVE</button>
+                <button class="tab-btn" onclick="showTab('results')">Результаты</button>
+            </div>
+            <div class="tab-content" id="upcoming">
+                <div class="matches-list" id="upcomingMatches">
+                    <!-- Данные загружаются из API -->
+                </div>
+            </div>
+            <div class="tab-content" id="live" style="display:none;">
+                <div class="matches-list" id="liveMatches">
+                    <!-- Данные загружаются из API -->
+                </div>
+            </div>
+            <div class="tab-content" id="results" style="display:none;">
+                <div class="matches-list" id="finishedMatches">
+                    <!-- Данные загружаются из API -->
+                </div>
+            </div>
+        </section>
+
+        <section id="news" class="content-section">
+            <h2>Последние новости</h2>
+            <div class="news-grid" id="newsContainer">
+                <!-- Данные загружаются из API -->
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>ЛЪибилская Лига © 2026 | Чемпионат проводится по выходным (Сб-Вс)</p>
+        <p>Для связи с администратором: <span class="admin-contact">(контактные данные добавьте в админ-панели)</span></p>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>
