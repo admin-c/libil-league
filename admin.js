@@ -635,52 +635,66 @@ async function approveRegistration(id) {
     
     if (!confirm(`Принять команду "${reg.team}"?`)) return;
     
-    // Add to standings
-    adminData.standings.push({
-        team: reg.team,
-        owner: reg.owner,
-        played: 0,
-        wins: 0,
-        draws: 0,
-        losses: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        points: 0
-    });
-    
-    // Remove from pending
-    adminData.pendingRegistrations = adminData.pendingRegistrations.filter(r => r.id !== id);
-    
-    // Add activity
-    adminData.activities.unshift({
-        id: Date.now(),
-        type: 'approval',
-        message: `Команда "${reg.team}" принята в лигу`,
-        date: new Date().toISOString(),
-        user: 'admin'
-    });
-    
-    await saveAllData();
-    alert(`Команда "${reg.team}" успешно добавлена в лигу!`);
-}
-
-function rejectRegistration(id) {
-    const reg = adminData.pendingRegistrations?.find(r => r.id === id);
-    if (!reg) return;
-    
-    if (!confirm(`Отклонить заявку команды "${reg.team}"?`)) return;
-    
-    adminData.pendingRegistrations = adminData.pendingRegistrations.filter(r => r.id !== id);
-    
-    adminData.activities.unshift({
-        id: Date.now(),
-        type: 'rejection',
-        message: `Заявка команды "${reg.team}" отклонена`,
-        date: new Date().toISOString(),
-        user: 'admin'
-    });
-    
-    saveAllData();
+    try {
+        // Добавляем в standings
+        if (!adminData.standings) {
+            adminData.standings = [];
+        }
+        
+        const newTeam = {
+            team: reg.team,
+            owner: reg.owner,
+            played: 0,
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            points: 0,
+            // Сохраняем дополнительные данные если есть
+            email: reg.email || null,
+            phone: reg.phone || null,
+            registeredDate: new Date().toISOString()
+        };
+        
+        adminData.standings.push(newTeam);
+        
+        // Удаляем из pending
+        adminData.pendingRegistrations = adminData.pendingRegistrations.filter(r => r.id !== id);
+        
+        // Добавляем активность
+        if (!adminData.activities) {
+            adminData.activities = [];
+        }
+        
+        adminData.activities.unshift({
+            id: Date.now(),
+            type: 'approval',
+            message: `Команда "${reg.team}" (${reg.owner}) принята в лигу`,
+            date: new Date().toISOString(),
+            user: 'admin'
+        });
+        
+        // Сохраняем изменения
+        const success = await saveAllData();
+        
+        if (success) {
+            alert(`✅ Команда "${reg.team}" успешно добавлена в турнирную таблицу!`);
+            // Обновляем интерфейс
+            updateRegistrations();
+            updateTeams();
+            updateDashboard();
+        } else {
+            alert('❌ Ошибка при сохранении. Попробуйте еще раз.');
+            // Откатываем изменения
+            adminData.standings = adminData.standings.filter(t => t.team !== reg.team);
+            adminData.pendingRegistrations.push(reg);
+        }
+        
+    } catch (error) {
+        console.error('Ошибка при подтверждении заявки:', error);
+        alert('❌ Ошибка сервера: ' + error.message);
+    }
 }
 
 // Teams
@@ -1571,4 +1585,5 @@ function getCategoryName(category) {
     };
     return names[category] || 'Общее';
 }
+
 
