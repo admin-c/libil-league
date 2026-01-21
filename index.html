@@ -3,107 +3,283 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ЛЪибилская Лига - FC Mobile</title>
+    <title>ЛЪибилская Лига - Вход</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="icon-192.png">
-    <meta name="theme-color" content="#0a1a2a">
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/ios-filled/50/3b82f6/football2.png">
+    <meta name="theme-color" content="#0f172a">
 </head>
 <body>
-    <div class="background-animation"></div>
-    <div class="blur-overlay"></div>
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
 
-    <header>
-        <nav class="main-nav">
-            <div class="logo">ЛЪибилская Лига</div>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">
+                <div class="nav-logo">LL</div>
+                <div class="nav-title">ЛЪибилская Лига</div>
+            </a>
+            
             <div class="nav-links">
-                <a href="#home" class="active">Главная</a>
-                <a href="#table">Турнирная таблица</a>
-                <a href="#fixtures">Расписание</a>
-                <a href="#news">Новости</a>
-                <button class="btn-install" id="installBtn" style="display:none;">Установить приложение</button>
+                <a href="index.html" class="nav-link active">
+                    <i class="fas fa-sign-in-alt"></i> Вход
+                </a>
+                <a href="table.html" class="nav-link">
+                    <i class="fas fa-table"></i> Турнирная таблица
+                </a>
+                <a href="fixtures.html" class="nav-link">
+                    <i class="fas fa-calendar-alt"></i> Расписание
+                </a>
+                <a href="news.html" class="nav-link">
+                    <i class="fas fa-newspaper"></i> Новости
+                </a>
             </div>
-            <button class="menu-toggle">☰</button>
-        </nav>
-    </header>
+            
+            <button class="mobile-menu" id="mobileMenu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
 
-    <main>
-        <section id="home" class="hero">
-            <div class="hero-content">
-                <h1 class="league-title animate-charcter">ЛЪибилская Лига</h1>
-                <p class="league-subtitle">Чемпионат по FC Mobile</p>
-                <div class="registration-form" id="registrationForm">
-                    <input type="text" id="teamName" placeholder="Название команды" required>
-                    <input type="text" id="ownerName" placeholder="Имя владельца" required>
-                    <button class="btn-primary" onclick="registerTeam()">Записаться на чемпионат</button>
-                    <p class="form-note">Заявка будет отправлена на подтверждение администратору</p>
-                </div>
-                <button class="btn-secondary" id="alreadyRegisteredBtn" onclick="showRegisteredMenu()" style="display:none;">Вы уже записаны →</button>
+    <!-- Main Content -->
+    <main class="main-container auth-container">
+        <div class="card auth-card">
+            <div class="card-header">
+                <h1 class="card-title text-gradient">ЛЪибилская Лига</h1>
+                <div class="card-badge">FC Mobile</div>
             </div>
-        </section>
 
-        <section id="table" class="content-section">
-            <h2>Турнирная таблица</h2>
-            <div class="table-container">
-                <table id="standingsTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Команда</th>
-                            <th>И</th>
-                            <th>В</th>
-                            <th>Н</th>
-                            <th>П</th>
-                            <th>ГЗ</th>
-                            <th>ГП</th>
-                            <th>РМ</th>
-                            <th>О</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Данные загружаются из API -->
-                    </tbody>
-                </table>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showTab('login')">
+                    <i class="fas fa-sign-in-alt"></i> Вход
+                </button>
+                <button class="auth-tab" onclick="showTab('register')">
+                    <i class="fas fa-user-plus"></i> Регистрация
+                </button>
             </div>
-        </section>
 
-        <section id="fixtures" class="content-section">
-            <h2>Расписание и результаты</h2>
-            <div class="tabs">
-                <button class="tab-btn active" onclick="showTab('upcoming')">Предстоящие</button>
-                <button class="tab-btn" onclick="showTab('live')">LIVE</button>
-                <button class="tab-btn" onclick="showTab('results')">Результаты</button>
-            </div>
-            <div class="tab-content" id="upcoming">
-                <div class="matches-list" id="upcomingMatches">
-                    <!-- Данные загружаются из API -->
+            <!-- Login Form -->
+            <form class="auth-form active" id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Название команды</label>
+                    <input type="text" class="form-control" id="loginTeam" 
+                           placeholder="Введите название команды" required>
                 </div>
-            </div>
-            <div class="tab-content" id="live" style="display:none;">
-                <div class="matches-list" id="liveMatches">
-                    <!-- Данные загружаются из API -->
-                </div>
-            </div>
-            <div class="tab-content" id="results" style="display:none;">
-                <div class="matches-list" id="finishedMatches">
-                    <!-- Данные загружаются из API -->
-                </div>
-            </div>
-        </section>
 
-        <section id="news" class="content-section">
-            <h2>Последние новости</h2>
-            <div class="news-grid" id="newsContainer">
-                <!-- Данные загружаются из API -->
+                <div class="form-group">
+                    <label class="form-label">Имя владельца</label>
+                    <input type="text" class="form-control" id="loginOwner" 
+                           placeholder="Введите ваше имя" required>
+                </div>
+
+                <button type="button" class="btn btn-primary btn-full" onclick="loginTeam()">
+                    <i class="fas fa-sign-in-alt"></i> Войти в лигу
+                </button>
+
+                <p class="text-center mt-3" style="color: var(--gray);">
+                    Нет команды? <a href="#" onclick="showTab('register')" style="color: var(--secondary);">Зарегистрируйте новую</a>
+                </p>
+            </form>
+
+            <!-- Registration Form -->
+            <form class="auth-form" id="registerForm">
+                <div class="form-group">
+                    <label class="form-label">Название команды *</label>
+                    <input type="text" class="form-control" id="regTeam" 
+                           placeholder="Придумайте название команды" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Имя владельца *</label>
+                    <input type="text" class="form-control" id="regOwner" 
+                           placeholder="Ваше имя" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Контактный email</label>
+                    <input type="email" class="form-control" id="regEmail" 
+                           placeholder="email@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Телефон (опционально)</label>
+                    <input type="tel" class="form-control" id="regPhone" 
+                           placeholder="+7 (999) 999-99-99">
+                </div>
+
+                <button type="button" class="btn btn-success btn-full" onclick="registerTeam()">
+                    <i class="fas fa-check-circle"></i> Зарегистрировать команду
+                </button>
+
+                <p class="text-center mt-3" style="color: var(--gray);">
+                    Уже есть команда? <a href="#" onclick="showTab('login')" style="color: var(--secondary);">Войдите в систему</a>
+                </p>
+            </form>
+
+            <!-- League Info -->
+            <div class="mt-4 p-3" style="background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-sm);">
+                <h3 style="color: var(--secondary); margin-bottom: 0.5rem;">
+                    <i class="fas fa-info-circle"></i> Информация о лиге
+                </h3>
+                <p style="color: var(--gray-light); font-size: 0.9rem; line-height: 1.5;">
+                    Чемпионат проводится каждые выходные (Сб-Вс) с 24.01.2026.<br>
+                    Все матчи проходят в FC Mobile. Регистрация бесплатная.
+                </p>
             </div>
-        </section>
+        </div>
     </main>
 
-    <footer>
-        <p>ЛЪибилская Лига © 2026 | Чемпионат проводится по выходным (Сб-Вс)</p>
-        <p>Для связи с администратором: <span class="admin-contact">(контактные данные добавьте в админ-панели)</span></p>
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2026 ЛЪибилская Лига FC Mobile. Все права защищены.</p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">Правила</a>
+            <a href="#" class="footer-link">Контакты</a>
+            <a href="admin.html" class="footer-link">Админ-панель</a>
+        </div>
     </footer>
 
+    <!-- Scripts -->
     <script src="main.js"></script>
+    <script>
+        // Particles background
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = 15 + Math.random() * 15 + 's';
+                particles.appendChild(particle);
+            }
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.auth-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.auth-form').forEach(form => {
+                form.classList.remove('active');
+            });
+            
+            if (tabName === 'login') {
+                document.querySelector('.auth-tab:nth-child(1)').classList.add('active');
+                document.getElementById('loginForm').classList.add('active');
+            } else {
+                document.querySelector('.auth-tab:nth-child(2)').classList.add('active');
+                document.getElementById('registerForm').classList.add('active');
+            }
+        }
+
+        // Mobile menu
+        document.getElementById('mobileMenu').addEventListener('click', () => {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            
+            // Check if user is already logged in
+            const userTeam = localStorage.getItem('liga_userTeam');
+            if (userTeam) {
+                window.location.href = 'table.html';
+            }
+        });
+
+        // Login function
+        async function loginTeam() {
+            const team = document.getElementById('loginTeam').value.trim();
+            const owner = document.getElementById('loginOwner').value.trim();
+            
+            if (!team || !owner) {
+                alert('Заполните все поля');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                const existingTeam = data.standings.find(t => 
+                    t.team.toLowerCase() === team.toLowerCase() && 
+                    t.owner.toLowerCase() === owner.toLowerCase()
+                );
+                
+                if (existingTeam) {
+                    localStorage.setItem('liga_userTeam', team);
+                    localStorage.setItem('liga_userOwner', owner);
+                    window.location.href = 'table.html';
+                } else {
+                    alert('Команда не найдена. Проверьте данные или зарегистрируйте новую команду.');
+                }
+            } catch (error) {
+                console.error('Ошибка входа:', error);
+                alert('Ошибка сервера. Попробуйте позже.');
+            }
+        }
+
+        // Registration function
+        async function registerTeam() {
+            const team = document.getElementById('regTeam').value.trim();
+            const owner = document.getElementById('regOwner').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const phone = document.getElementById('regPhone').value.trim();
+            
+            if (!team || !owner) {
+                alert('Заполните обязательные поля (название команды и владельца)');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                if (data.standings.some(t => t.team.toLowerCase() === team.toLowerCase())) {
+                    alert('Команда с таким названием уже существует');
+                    return;
+                }
+                
+                if (data.pendingRegistrations?.some(r => r.team.toLowerCase() === team.toLowerCase())) {
+                    alert('Заявка на эту команду уже подана и ожидает подтверждения');
+                    return;
+                }
+                
+                const registration = {
+                    id: Date.now(),
+                    team: team,
+                    owner: owner,
+                    email: email || null,
+                    phone: phone || null,
+                    date: new Date().toISOString(),
+                    status: 'pending'
+                };
+                
+                const saveResponse = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(registration)
+                });
+                
+                if (saveResponse.ok) {
+                    alert('Заявка отправлена! Ожидайте подтверждения администратора.');
+                    document.getElementById('regTeam').value = '';
+                    document.getElementById('regOwner').value = '';
+                    document.getElementById('regEmail').value = '';
+                    document.getElementById('regPhone').value = '';
+                    showTab('login');
+                } else {
+                    throw new Error('Ошибка отправки заявки');
+                }
+            } catch (error) {
+                console.error('Ошибка регистрации:', error);
+                alert('Ошибка сервера. Попробуйте позже.');
+            }
+        }
+    </script>
 </body>
 </html>
