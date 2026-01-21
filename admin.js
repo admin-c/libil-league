@@ -6,19 +6,184 @@ const CONFIG = {
 
 let adminData = {};
 let allTeams = [];
+// ===== СИСТЕМА СОХРАНЕНИЯ =====
+let isSaving = false;
+let saveQueue = [];
+let lastSaveTime = 0;
+const SAVE_COOLDOWN = 2000;
 
+async function saveAllData() {
+    if (isSaving) {
+        console.log('⚠️ Сохранение уже выполняется, запрос поставлен в очередь');
+        saveQueue.push(Date.now());
+        return false;
+    }
+    
+    const now = Date.now();
+    if (now - lastSaveTime < SAVE_COOLDOWN) {
+        console.log('⚠️ Слишком частые сохранения, пропускаем');
+        return false;
+    }
+    
+    isSaving = true;
+    lastSaveTime = now;
+    
+    try {
+        console.log('💾 Начало сохранения данных...');
+        
+        const dataToSave = {
+            league: adminData.league || {
+                name: "ЛЪибилская Лига",
+                description: "Чемпионат по FC Mobile",
+                season: 2026,
+                points: { win: 3, draw: 1, loss: 0 }
+            },
+            standings: adminData.standings || [],
+            matches: adminData.matches || [],
+            news: adminData.news || [],
+            pendingRegistrations: adminData.pendingRegistrations || [],
+            activities: (adminData.activities || []).slice(0, 20)
+        };
+        
+        console.log(`📊 Сохраняю: ${dataToSave.standings.length} команд, ${dataToSave.matches.length} матчей`);
+        
+        dataToSave.lastSaved = new Date().toISOString();
+        dataToSave.saveId = Date.now();
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch('/api/save', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            },
+            body: JSON.stringify(dataToSave),
+            signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Ошибка сервера: ${response.status} - ${errorText.substring(0, 100)}`);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Данные сохранены:', result.message || 'успешно');
+        showSaveNotification('✅ Данные сохранены успешно!', 'success');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Ошибка сохранения:', error);
+        
+        let errorMessage = 'Ошибка сохранения';
+        if (error.name === 'AbortError') {
+            errorMessage = 'Таймаут: сохранение заняло слишком много времени';
+        } else if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Нет соединения с сервером';
+        } else if (error.message.includes('500')) {
+            errorMessage = 'Ошибка сервера 500. Проверьте настройки GitHub';
+        }
+        
+        showSaveNotification(`❌ ${errorMessage}`, 'error');
+        return false;
+        
+    } finally {
+        isSaving = false;
+        if (saveQueue.length > 0) {
+            console.log(`📋 Обрабатываю очередь сохранений: ${saveQueue.length} запросов`);
+            saveQueue = [];
+            setTimeout(saveAllData, 1000);
+        }
+    }
+}
+
+function showSaveNotification(message, type = 'info') {
+    const oldNotification = document.getElementById('save-notification');
+    if (oldNotification) oldNotification.remove();
+    
+    const notification = document.createElement('div');
+    notification.id = 'save-notification';
+    notification.innerHTML = `
+        <div style="
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideInUp 0.3s ease;
+        ">
+            ${message}
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    style="
+                        background: rgba(255,255,255,0.2);
+                        border: none;
+                        color: white;
+                        border-radius: 4px;
+                        padding: 4px 8px;
+                        cursor: pointer;
+                        font-size: 12px;
+                    ">
+                ✕
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        if (notification.parentNode) notification.remove();
+    }, 5000);
+}
+
+function setupAutoSave() {
+    const AUTO_SAVE_INTERVAL = 30000;
+    const autoSaveInterval = setInterval(() => {
+        if (!isSaving && adminData.standings && adminData.standings.length > 0) {
+            console.log('⏰ Автосохранение...');
+            saveAllData().catch(console.error);
+        }
+    }, AUTO_SAVE_INTERVAL);
+    
+    window.addEventListener('beforeunload', () => {
+        if (!isSaving && adminData.standings && adminData.standings.length > 0) {
+            navigator.sendBeacon('/api/save', JSON.stringify({
+                ...adminData,
+                lastSaved: new Date().toISOString(),
+                beacon: true
+            }));
+        }
+    });
+    
+    return () => clearInterval(autoSaveInterval);
+}
 // ===== ЗАГРУЗКА ДАННЫХ =====
 async function loadAdminData() {
     try {
         console.log('Loading admin data...');
-        const response = await fetch('/api/data');
+        const response = await fetch('/api/data', {
+            headers: {
+                'Cache-Control': 'no-cache'
+            }
+        });
         
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`Server error: ${response.status}`);
         
         adminData = await response.json();
         allTeams = adminData.standings || [];
+        
+        // Инициализируем автосохранение
+        setupAutoSave();
         
         updateDashboard();
         updateRegistrations();
@@ -32,7 +197,7 @@ async function loadAdminData() {
         
     } catch (error) {
         console.error('Error loading admin data:', error);
-        alert('Ошибка загрузки данных. Проверьте подключение.');
+        showSaveNotification('❌ Ошибка загрузки данных', 'error');
     }
 }
 
@@ -1324,28 +1489,6 @@ function clearAllData() {
     setTimeout(() => location.reload(), 1000);
 }
 
-// Save all data
-async function saveAllData() {
-    try {
-        const response = await fetch('/api/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(adminData)
-        });
-        
-        if (response.ok) {
-            console.log('✅ Данные сохранены');
-            return true;
-        } else {
-            throw new Error('Ошибка сохранения');
-        }
-    } catch (error) {
-        console.error('Ошибка сохранения:', error);
-        alert('Ошибка сохранения данных!');
-        return false;
-    }
-}
-
 // ===== УТИЛИТЫ =====
 
 function formatDate(dateString) {
@@ -1428,3 +1571,4 @@ function getCategoryName(category) {
     };
     return names[category] || 'Общее';
 }
+
