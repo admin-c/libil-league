@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Турнирная таблица - ЛЪибилская Лига</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/ios-filled/50/3b82f6/football2.png">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">
+                <div class="nav-logo">LL</div>
+                <div class="nav-title">ЛЪибилская Лига</div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-sign-in-alt"></i> Вход
+                </a>
+                <a href="table.html" class="nav-link active">
+                    <i class="fas fa-table"></i> Турнирная таблица
+                </a>
+                <a href="fixtures.html" class="nav-link">
+                    <i class="fas fa-calendar-alt"></i> Расписание
+                </a>
+                <a href="news.html" class="nav-link">
+                    <i class="fas fa-newspaper"></i> Новости
+                </a>
+            </div>
+            
+            <div class="nav-actions">
+                <div class="user-menu" id="userMenu">
+                    <div class="user-avatar" id="userAvatar">Т</div>
+                    <span id="userName">Команда</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <button class="mobile-menu" id="mobileMenu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Leader Card -->
+        <div class="card leader-card mb-4">
+            <div class="leader-badge">🏆 ЛИДЕР ЛИГИ</div>
+            <div class="leader-content">
+                <div class="leader-avatar" id="leaderAvatar">1</div>
+                <h2 id="leaderTeam" class="text-gradient" style="font-size: 1.75rem;">Название команды</h2>
+                <p id="leaderOwner" style="color: var(--gray);">Владелец команды</p>
+                
+                <div class="leader-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="leaderPoints">0</div>
+                        <div class="stat-label">Очков</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="leaderWins">0</div>
+                        <div class="stat-label">Побед</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="leaderGD">0</div>
+                        <div class="stat-label">Разница мячей</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <button class="filter-btn active" onclick="filterTable('all')">
+                <i class="fas fa-list"></i> Все команды
+            </button>
+            <button class="filter-btn" onclick="filterTable('top')">
+                <i class="fas fa-trophy"></i> Топ-5
+            </button>
+            <button class="filter-btn" onclick="filterTable('user')">
+                <i class="fas fa-user"></i> Моя команда
+            </button>
+        </div>
+
+        <!-- Standings Table -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Турнирная таблица</h2>
+                <div class="card-badge">Сезон 2026</div>
+            </div>
+
+            <div class="table-container">
+                <table class="table" id="standingsTable">
+                    <thead>
+                        <tr>
+                            <th width="60">#</th>
+                            <th>Команда</th>
+                            <th width="80">И</th>
+                            <th width="80">В</th>
+                            <th width="80">Н</th>
+                            <th width="80">П</th>
+                            <th width="80">ГЗ</th>
+                            <th width="80">ГП</th>
+                            <th width="80">РМ</th>
+                            <th width="80">О</th>
+                            <th width="120">Форма</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Stats Summary -->
+            <div class="grid grid-4 mt-4" id="statsSummary">
+                <div class="text-center p-3" style="background: rgba(59, 130, 246, 0.1); border-radius: var(--radius-sm);">
+                    <div class="stat-value" id="totalTeams">0</div>
+                    <div class="stat-label">Команд</div>
+                </div>
+                <div class="text-center p-3" style="background: rgba(16, 185, 129, 0.1); border-radius: var(--radius-sm);">
+                    <div class="stat-value" id="totalMatches">0</div>
+                    <div class="stat-label">Матчей</div>
+                </div>
+                <div class="text-center p-3" style="background: rgba(245, 158, 11, 0.1); border-radius: var(--radius-sm);">
+                    <div class="stat-value" id="totalGoals">0</div>
+                    <div class="stat-label">Голов</div>
+                </div>
+                <div class="text-center p-3" style="background: rgba(239, 68, 68, 0.1); border-radius: var(--radius-sm);">
+                    <div class="stat-value" id="avgPoints">0</div>
+                    <div class="stat-label">Очков в среднем</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Team Info -->
+        <div class="card mt-4" id="userTeamCard" style="display: none;">
+            <div class="card-header">
+                <h2 class="card-title">Моя команда</h2>
+                <div class="card-badge" id="userPosition">#0</div>
+            </div>
+            
+            <div class="grid grid-4" id="userTeamStats">
+                <!-- User stats will be loaded here -->
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2026 ЛЪибилская Лига FC Mobile. Все права защищены.</p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">Правила</a>
+            <a href="#" class="footer-link">Контакты</a>
+            <a href="admin.html" class="footer-link">Админ-панель</a>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Particles background
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = 15 + Math.random() * 15 + 's';
+                particles.appendChild(particle);
+            }
+        }
+
+        // Mobile menu
+        document.getElementById('mobileMenu').addEventListener('click', () => {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+
+        // User menu
+        document.getElementById('userMenu').addEventListener('click', () => {
+            if (confirm('Выйти из аккаунта?')) {
+                localStorage.removeItem('liga_userTeam');
+                localStorage.removeItem('liga_userOwner');
+                window.location.href = 'index.html';
+            }
+        });
+
+        let standingsData = [];
+        let userTeam = '';
+
+        // Load standings data
+        async function loadStandings() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                standingsData = data.standings || [];
+                
+                // Sort by points, then goal difference, then goals for
+                standingsData.sort((a, b) => {
+                    if (b.points !== a.points) return b.points - a.points;
+                    const bGD = b.goalsFor - b.goalsAgainst;
+                    const aGD = a.goalsFor - a.goalsAgainst;
+                    if (bGD !== aGD) return bGD - aGD;
+                    return b.goalsFor - a.goalsFor;
+                });
+                
+                updateTable();
+                updateLeader();
+                updateUserInfo();
+            } catch (error) {
+                console.error('Ошибка загрузки таблицы:', error);
+                document.getElementById('tableBody').innerHTML = `
+                    <tr>
+                        <td colspan="11" class="text-center p-4">
+                            <p style="color: var(--gray);">Ошибка загрузки данных</p>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Update table
+        function updateTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            standingsData.forEach((team, index) => {
+                const position = index + 1;
+                const form = getTeamForm(team);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="table-rank">${position}</td>
+                    <td>
+                        <div class="table-team">
+                            <div class="team-logo">${team.team.charAt(0)}</div>
+                            <div>
+                                <div class="team-name">${team.team}</div>
+                                <div class="team-owner">${team.owner}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${team.played || 0}</td>
+                    <td>${team.wins || 0}</td>
+                    <td>${team.draws || 0}</td>
+                    <td>${team.losses || 0}</td>
+                    <td>${team.goalsFor || 0}</td>
+                    <td>${team.goalsAgainst || 0}</td>
+                    <td>${(team.goalsFor || 0) - (team.goalsAgainst || 0)}</td>
+                    <td><strong style="color: var(--accent);">${team.points || 0}</strong></td>
+                    <td>
+                        <div style="display: flex; gap: 2px;">
+                            ${form.split('').map(result => `
+                                <div style="
+                                    width: 8px;
+                                    height: 8px;
+                                    border-radius: 50%;
+                                    background: ${result === 'W' ? 'var(--accent)' : 
+                                                result === 'D' ? 'var(--warning)' : 
+                                                'var(--danger)'};
+                                "></div>
+                            `).join('')}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            updateStats();
+        }
+
+        // Get team form (last 5 matches)
+        function getTeamForm(team) {
+            // In a real app, this would fetch match history
+            // For now, generate random form
+            const results = ['W', 'D', 'L'];
+            return Array(5).fill(0).map(() => 
+                results[Math.floor(Math.random() * results.length)]
+            ).join('');
+        }
+
+        // Update leader info
+        function updateLeader() {
+            if (standingsData.length > 0) {
+                const leader = standingsData[0];
+                document.getElementById('leaderAvatar').textContent = leader.team.charAt(0);
+                document.getElementById('leaderTeam').textContent = leader.team;
+                document.getElementById('leaderOwner').textContent = leader.owner;
+                document.getElementById('leaderPoints').textContent = leader.points || 0;
+                document.getElementById('leaderWins').textContent = leader.wins || 0;
+                document.getElementById('leaderGD').textContent = 
+                    (leader.goalsFor || 0) - (leader.goalsAgainst || 0);
+            }
+        }
+
+        // Update user info
+        function updateUserInfo() {
+            userTeam = localStorage.getItem('liga_userTeam');
+            if (userTeam) {
+                document.getElementById('userAvatar').textContent = userTeam.charAt(0);
+                document.getElementById('userName').textContent = userTeam;
+                
+                const userIndex = standingsData.findIndex(t => 
+                    t.team.toLowerCase() === userTeam.toLowerCase()
+                );
+                
+                if (userIndex !== -1) {
+                    const userData = standingsData[userIndex];
+                    document.getElementById('userTeamCard').style.display = 'block';
+                    document.getElementById('userPosition').textContent = `#${userIndex + 1}`;
+                    
+                    document.getElementById('userTeamStats').innerHTML = `
+                        <div class="text-center p-2">
+                            <div class="stat-value">${userData.points || 0}</div>
+                            <div class="stat-label">Очки</div>
+                        </div>
+                        <div class="text-center p-2">
+                            <div class="stat-value">${userData.wins || 0}</div>
+                            <div class="stat-label">Победы</div>
+                        </div>
+                        <div class="text-center p-2">
+                            <div class="stat-value">${userData.goalsFor || 0}</div>
+                            <div class="stat-label">Забито</div>
+                        </div>
+                        <div class="text-center p-2">
+                            <div class="stat-value">${userData.goalsAgainst || 0}</div>
+                            <div class="stat-label">Пропущено</div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('totalTeams').textContent = standingsData.length;
+            
+            const totalMatches = standingsData.reduce((sum, team) => 
+                sum + (team.played || 0), 0
+            );
+            document.getElementById('totalMatches').textContent = totalMatches;
+            
+            const totalGoals = standingsData.reduce((sum, team) => 
+                sum + (team.goalsFor || 0), 0
+            );
+            document.getElementById('totalGoals').textContent = totalGoals;
+            
+            const avgPoints = standingsData.length > 0 ? 
+                (standingsData.reduce((sum, team) => sum + (team.points || 0), 0) / standingsData.length).toFixed(1) : 
+                '0';
+            document.getElementById('avgPoints').textContent = avgPoints;
+        }
+
+        // Filter table
+        function filterTable(type) {
+            document.querySelectorAll('.filter-btn').forEach(btn => 
+                btn.classList.remove('active')
+            );
+            event.target.classList.add('active');
+            
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            let filteredData = standingsData;
+            
+            if (type === 'top') {
+                filteredData = standingsData.slice(0, 5);
+            } else if (type === 'user' && userTeam) {
+                filteredData = standingsData.filter(t => 
+                    t.team.toLowerCase() === userTeam.toLowerCase()
+                );
+            }
+            
+            filteredData.forEach((team, index) => {
+                const position = type === 'all' ? index + 1 : 
+                               type === 'top' ? index + 1 : 1;
+                const form = getTeamForm(team);
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="table-rank">${position}</td>
+                    <td>
+                        <div class="table-team">
+                            <div class="team-logo">${team.team.charAt(0)}</div>
+                            <div>
+                                <div class="team-name">${team.team}</div>
+                                <div class="team-owner">${team.owner}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>${team.played || 0}</td>
+                    <td>${team.wins || 0}</td>
+                    <td>${team.draws || 0}</td>
+                    <td>${team.losses || 0}</td>
+                    <td>${team.goalsFor || 0}</td>
+                    <td>${team.goalsAgainst || 0}</td>
+                    <td>${(team.goalsFor || 0) - (team.goalsAgainst || 0)}</td>
+                    <td><strong style="color: var(--accent);">${team.points || 0}</strong></td>
+                    <td>
+                        <div style="display: flex; gap: 2px;">
+                            ${form.split('').map(result => `
+                                <div style="
+                                    width: 8px;
+                                    height: 8px;
+                                    border-radius: 50%;
+                                    background: ${result === 'W' ? 'var(--accent)' : 
+                                                result === 'D' ? 'var(--warning)' : 
+                                                'var(--danger)'};
+                                "></div>
+                            `).join('')}
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            
+            // Check if user is logged in
+            if (!localStorage.getItem('liga_userTeam')) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            loadStandings();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadStandings, 30000);
+        });
+    </script>
+</body>
+</html>
