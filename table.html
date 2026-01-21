@@ -446,5 +446,65 @@
         // Дополнительные функции для таблицы
     });
 </script>
+    <script>
+// Улучшения для мобильных устройств
+(function() {
+    // Предотвращение масштабирования при фокусе на input
+    document.addEventListener('DOMContentLoaded', function() {
+        let viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+            viewport.content = 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes';
+        }
+        
+        // Исправление 100vh на мобильных
+        function setVh() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+        
+        setVh();
+        window.addEventListener('resize', setVh);
+        window.addEventListener('orientationchange', setVh);
+        
+        // Предотвращение всплывающей клавиатуры на iOS
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                setTimeout(() => {
+                    e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 300);
+            }
+        }, { passive: true });
+        
+        // Закрытие мобильного меню при клике вне его
+        document.addEventListener('click', function(e) {
+            const navLinks = document.querySelector('.nav-links');
+            const mobileMenu = document.querySelector('.mobile-menu');
+            
+            if (navLinks && navLinks.classList.contains('active') && 
+                !navLinks.contains(e.target) && 
+                !mobileMenu.contains(e.target)) {
+                navLinks.classList.remove('active');
+            }
+        });
+        
+        // Исправление скролла на iOS
+        document.body.addEventListener('touchmove', function(e) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            e.preventDefault();
+        }, { passive: false });
+    });
+    
+    // Включение haptic feedback на поддерживаемых устройствах
+    if ('vibrate' in navigator) {
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.btn') || e.target.closest('.nav-link')) {
+                navigator.vibrate(10);
+            }
+        }, { passive: true });
+    }
+})();
+</script>
 </body>
 </html>
