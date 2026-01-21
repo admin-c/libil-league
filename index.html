@@ -281,5 +281,33 @@
             }
         }
     </script>
+    <script>
+    // Функции только для главной страницы
+    document.addEventListener('DOMContentLoaded', function() {
+        // Инициализация формы регистрации
+        const teamNameInput = document.getElementById('teamName');
+        const ownerNameInput = document.getElementById('ownerName');
+        
+        if (teamNameInput && ownerNameInput) {
+            teamNameInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') registerTeam();
+            });
+            ownerNameInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') registerTeam();
+            });
+        }
+        
+        // Проверка авторизации
+        const userTeam = localStorage.getItem('userTeam');
+        if (userTeam) {
+            // Пользователь уже вошел
+            const alreadyBtn = document.getElementById('alreadyRegisteredBtn');
+            const regForm = document.getElementById('registrationForm');
+            if (alreadyBtn) alreadyBtn.style.display = 'block';
+            if (regForm) regForm.style.display = 'none';
+        }
+    });
+</script>
 </body>
 </html>
+
