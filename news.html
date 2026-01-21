@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новости - ЛЪибилская Лига</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/ios-filled/50/3b82f6/football2.png">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">
+                <div class="nav-logo">LL</div>
+                <div class="nav-title">ЛЪибилская Лига</div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-sign-in-alt"></i> Вход
+                </a>
+                <a href="table.html" class="nav-link">
+                    <i class="fas fa-table"></i> Турнирная таблица
+                </a>
+                <a href="fixtures.html" class="nav-link">
+                    <i class="fas fa-calendar-alt"></i> Расписание
+                </a>
+                <a href="news.html" class="nav-link active">
+                    <i class="fas fa-newspaper"></i> Новости
+                </a>
+            </div>
+            
+            <div class="nav-actions">
+                <div class="user-menu" id="userMenu">
+                    <div class="user-avatar" id="userAvatar">Т</div>
+                    <span id="userName">Команда</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <button class="mobile-menu" id="mobileMenu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Featured News -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="card-title">Главные новости</h2>
+                <div class="card-badge">Обновлено</div>
+            </div>
+            
+            <div class="grid grid-2" id="featuredNews">
+                <!-- Featured news will be loaded here -->
+            </div>
+        </div>
+
+        <!-- News Filters -->
+        <div class="filters">
+            <button class="filter-btn active" onclick="filterNews('all')">
+                <i class="fas fa-newspaper"></i> Все новости
+            </button>
+            <button class="filter-btn" onclick="filterNews('updates')">
+                <i class="fas fa-bullhorn"></i> Обновления
+            </button>
+            <button class="filter-btn" onclick="filterNews('results')">
+                <i class="fas fa-trophy"></i> Результаты
+            </button>
+            <button class="filter-btn" onclick="filterNews('announcements')">
+                <i class="fas fa-info-circle"></i> Объявления
+            </button>
+        </div>
+
+        <!-- All News -->
+        <div class="news-grid" id="newsGrid">
+            <!-- News will be loaded here -->
+        </div>
+
+        <!-- Load More Button -->
+        <div class="text-center mt-4">
+            <button class="btn btn-secondary" onclick="loadMoreNews()" id="loadMoreBtn">
+                <i class="fas fa-arrow-down"></i> Загрузить больше новостей
+            </button>
+        </div>
+
+        <!-- League Info -->
+        <div class="grid grid-2 mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Календарь событий</h3>
+                    <i class="fas fa-calendar-day" style="color: var(--accent);"></i>
+                </div>
+                
+                <div id="eventsCalendar">
+                    <!-- Events will be loaded here -->
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Полезные ссылки</h3>
+                    <i class="fas fa-link" style="color: var(--secondary);"></i>
+                </div>
+                
+                <div class="mt-3">
+                    <a href="#" class="btn btn-secondary btn-full mb-2">
+                        <i class="fas fa-file-alt"></i> Правила лиги
+                    </a>
+                    <a href="#" class="btn btn-secondary btn-full mb-2">
+                        <i class="fas fa-question-circle"></i> FAQ
+                    </a>
+                    <a href="#" class="btn btn-secondary btn-full mb-2">
+                        <i class="fas fa-headset"></i> Техподдержка
+                    </a>
+                    <a href="admin.html" class="btn btn-secondary btn-full">
+                        <i class="fas fa-lock"></i> Админ-панель
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2026 ЛЪибилская Лига FC Mobile. Все права защищены.</p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">Правила</a>
+            <a href="#" class="footer-link">Контакты</a>
+            <a href="admin.html" class="footer-link">Админ-панель</a>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Particles background
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = 15 + Math.random() * 15 + 's';
+                particles.appendChild(particle);
+            }
+        }
+
+        // Mobile menu
+        document.getElementById('mobileMenu').addEventListener('click', () => {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+
+        // User menu
+        document.getElementById('userMenu').addEventListener('click', () => {
+            if (confirm('Выйти из аккаунта?')) {
+                localStorage.removeItem('liga_userTeam');
+                localStorage.removeItem('liga_userOwner');
+                window.location.href = 'index.html';
+            }
+        });
+
+        let newsData = [];
+        let currentPage = 1;
+        const itemsPerPage = 6;
+
+        // Load news data
+        async function loadNews() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                newsData = data.news || [];
+                
+                // Sort by date (newest first)
+                newsData.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                updateNewsDisplay();
+                updateEventsCalendar();
+            } catch (error) {
+                console.error('Ошибка загрузки новостей:', error);
+            }
+        }
+
+        // Update news display
+        function updateNewsDisplay() {
+            // Featured news (first 2 items)
+            const featured = newsData.slice(0, 2);
+            document.getElementById('featuredNews').innerHTML = featured.map(news => `
+                <div class="card" style="border-left: 4px solid var(--secondary);">
+                    <div class="news-date">
+                        <i class="far fa-calendar"></i> ${formatDate(news.date)}
+                    </div>
+                    <h3 class="news-title">${news.title}</h3>
+                    <p class="news-content">
+                        ${news.content.substring(0, 150)}${news.content.length > 150 ? '...' : ''}
+                    </p>
+                    ${news.image ? `
+                        <img src="${news.image}" alt="${news.title}" 
+                             style="width: 100%; border-radius: var(--radius-sm); margin: 1rem 0;">
+                    ` : ''}
+                    <div class="news-actions">
+                        <button class="btn btn-sm btn-primary" onclick="viewNews(${news.id})">
+                            <i class="fas fa-eye"></i> Читать
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            // All news (paginated)
+            displayNewsPage();
+        }
+
+        // Display news page
+        function displayNewsPage() {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageNews = newsData.slice(startIndex, endIndex);
+            
+            if (currentPage === 1) {
+                document.getElementById('newsGrid').innerHTML = '';
+            }
+            
+            document.getElementById('newsGrid').innerHTML += pageNews.map(news => `
+                <div class="card news-card">
+                    <div class="news-date">
+                        <i class="far fa-calendar"></i> ${formatDate(news.date)}
+                        ${news.category ? `<span style="
+                            background: ${getCategoryColor(news.category)};
+                            color: white;
+                            padding: 0.25rem 0.75rem;
+                            border-radius: 50px;
+                            font-size: 0.75rem;
+                            margin-left: 0.5rem;
+                        ">${news.category}</span>` : ''}
+                    </div>
+                    <h3 class="news-title">${news.title}</h3>
+                    <p class="news-content">
+                        ${news.content.substring(0, 200)}${news.content.length > 200 ? '...' : ''}
+                    </p>
+                    
+                    ${news.image ? `
+                        <img src="${news.image}" alt="${news.title}" 
+                             style="width: 100%; border-radius: var(--radius-sm); margin: 1rem 0;">
+                    ` : ''}
+                    
+                    <div class="news-actions">
+                        <button class="btn btn-sm btn-primary" onclick="viewNews(${news.id})">
+                            <i class="fas fa-eye"></i> Читать полностью
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Show/hide load more button
+            document.getElementById('loadMoreBtn').style.display = 
+                endIndex < newsData.length ? 'inline-flex' : 'none';
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        // Get category color
+        function getCategoryColor(category) {
+            const colors = {
+                'updates': 'var(--secondary)',
+                'results': 'var(--accent)',
+                'announcements': 'var(--warning)',
+                'default': 'var(--gray)'
+            };
+            return colors[category] || colors.default;
+        }
+
+        // View news details
+        function viewNews(newsId) {
+            const news = newsData.find(n => n.id === newsId);
+            if (news) {
+                const modal = document.createElement('div');
+                modal.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    backdrop-filter: blur(10px);
+                    z-index: 10000;
+                    padding: 2rem;
+                    overflow-y: auto;
+                `;
+                
+                modal.innerHTML = `
+                    <div style="
+                        max-width: 800px;
+                        margin: 0 auto;
+                        background: var(--glass-bg);
+                        border-radius: var(--radius);
+                        padding: 2rem;
+                        position: relative;
+                    ">
+                        <button onclick="this.parentElement.parentElement.remove()" 
+                                style="
+                                    position: absolute;
+                                    top: 1rem;
+                                    right: 1rem;
+                                    background: none;
+                                    border: none;
+                                    color: white;
+                                    font-size: 1.5rem;
+                                    cursor: pointer;
+                                ">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        
+                        <div class="news-date">
+                            <i class="far fa-calendar"></i> ${formatDate(news.date)}
+                        </div>
+                        
+                        <h2 style="margin: 1rem 0; font-size: 1.75rem;">${news.title}</h2>
+                        
+                        ${news.image ? `
+                            <img src="${news.image}" alt="${news.title}" 
+                                 style="width: 100%; border-radius: var(--radius-sm); margin: 1rem 0;">
+                        ` : ''}
+                        
+                        <div style="
+                            line-height: 1.8;
+                            color: var(--gray-light);
+                            font-size: 1.1rem;
+                        ">
+                            ${news.content}
+                        </div>
+                        
+                        <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                            <button class="btn btn-secondary" 
+                                    onclick="this.parentElement.parentElement.parentElement.remove()">
+                                <i class="fas fa-times"></i> Закрыть
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+            }
+        }
+
+        // Filter news
+        function filterNews(category) {
+            document.querySelectorAll('.filter-btn').forEach(btn => 
+                btn.classList.remove('active')
+            );
+            event.target.classList.add('active');
+            
+            let filteredNews = newsData;
+            
+            if (category === 'updates') {
+                filteredNews = newsData.filter(n => n.category === 'updates');
+            } else if (category === 'results') {
+                filteredNews = newsData.filter(n => n.category === 'results');
+            } else if (category === 'announcements') {
+                filteredNews = newsData.filter(n => n.category === 'announcements');
+            }
+            
+            document.getElementById('newsGrid').innerHTML = filteredNews.map(news => `
+                <div class="card news-card">
+                    <div class="news-date">
+                        <i class="far fa-calendar"></i> ${formatDate(news.date)}
+                        ${news.category ? `<span style="
+                            background: ${getCategoryColor(news.category)};
+                            color: white;
+                            padding: 0.25rem 0.75rem;
+                            border-radius: 50px;
+                            font-size: 0.75rem;
+                            margin-left: 0.5rem;
+                        ">${news.category}</span>` : ''}
+                    </div>
+                    <h3 class="news-title">${news.title}</h3>
+                    <p class="news-content">
+                        ${news.content.substring(0, 200)}${news.content.length > 200 ? '...' : ''}
+                    </p>
+                    
+                    ${news.image ? `
+                        <img src="${news.image}" alt="${news.title}" 
+                             style="width: 100%; border-radius: var(--radius-sm); margin: 1rem 0;">
+                    ` : ''}
+                    
+                    <div class="news-actions">
+                        <button class="btn btn-sm btn-primary" onclick="viewNews(${news.id})">
+                            <i class="fas fa-eye"></i> Читать полностью
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('loadMoreBtn').style.display = 'none';
+        }
+
+        // Load more news
+        function loadMoreNews() {
+            currentPage++;
+            displayNewsPage();
+        }
+
+        // Update events calendar
+        function updateEventsCalendar() {
+            const today = new Date();
+            const nextWeek = new Date(today);
+            nextWeek.setDate(nextWeek.getDate() + 7);
+            
+            const upcomingEvents = [
+                { date: today, title: 'Начало чемпионата', type: 'start' },
+                { date: new Date(today.getTime() + 86400000 * 3), title: 'Тур 1', type: 'match' },
+                { date: new Date(today.getTime() + 86400000 * 7), title: 'Тур 2', type: 'match' },
+                { date: new Date(today.getTime() + 86400000 * 14), title: 'Полуфиналы', type: 'playoff' },
+                { date: new Date(today.getTime() + 86400000 * 21), title: 'Финал', type: 'final' }
+            ];
+            
+            document.getElementById('eventsCalendar').innerHTML = upcomingEvents.map(event => `
+                <div class="p-3 mb-2" style="
+                    background: rgba(255, 255, 255, 0.03);
+                    border-radius: var(--radius-sm);
+                    border-left: 3px solid ${getEventColor(event.type)};
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div>
+                            <div style="font-size: 0.875rem; color: var(--gray);">
+                                ${event.date.toLocaleDateString('ru-RU', { 
+                                    day: 'numeric', 
+                                    month: 'short' 
+                                })}
+                            </div>
+                            <strong>${event.title}</strong>
+                        </div>
+                        <div style="
+                            background: ${getEventColor(event.type)};
+                            color: white;
+                            padding: 0.25rem 0.75rem;
+                            border-radius: 50px;
+                            font-size: 0.75rem;
+                        ">
+                            ${getEventType(event.type)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Get event color
+        function getEventColor(type) {
+            const colors = {
+                'start': 'var(--accent)',
+                'match': 'var(--secondary)',
+                'playoff': 'var(--warning)',
+                'final': 'var(--danger)'
+            };
+            return colors[type] || 'var(--gray)';
+        }
+
+        // Get event type text
+        function getEventType(type) {
+            const types = {
+                'start': 'Старт',
+                'match': 'Тур',
+                'playoff': 'Плей-офф',
+                'final': 'Финал'
+            };
+            return types[type] || 'Событие';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            
+            // Check if user is logged in
+            if (!localStorage.getItem('liga_userTeam')) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Update user info
+            const userTeam = localStorage.getItem('liga_userTeam');
+            if (userTeam) {
+                document.getElementById('userAvatar').textContent = userTeam.charAt(0);
+                document.getElementById('userName').textContent = userTeam;
+            }
+            
+            loadNews();
+        });
+    </script>
+</body>
+</html>
