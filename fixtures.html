@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расписание - ЛЪибилская Лига</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/ios-filled/50/3b82f6/football2.png">
+    <meta name="theme-color" content="#0f172a">
+</head>
+<body>
+    <!-- Particles Background -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="nav-brand">
+                <div class="nav-logo">LL</div>
+                <div class="nav-title">ЛЪибилская Лига</div>
+            </a>
+            
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">
+                    <i class="fas fa-sign-in-alt"></i> Вход
+                </a>
+                <a href="table.html" class="nav-link">
+                    <i class="fas fa-table"></i> Турнирная таблица
+                </a>
+                <a href="fixtures.html" class="nav-link active">
+                    <i class="fas fa-calendar-alt"></i> Расписание
+                </a>
+                <a href="news.html" class="nav-link">
+                    <i class="fas fa-newspaper"></i> Новости
+                </a>
+            </div>
+            
+            <div class="nav-actions">
+                <div class="user-menu" id="userMenu">
+                    <div class="user-avatar" id="userAvatar">Т</div>
+                    <span id="userName">Команда</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <button class="mobile-menu" id="mobileMenu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        <!-- Filters -->
+        <div class="filters">
+            <button class="filter-btn active" onclick="showMatches('upcoming')">
+                <i class="fas fa-clock"></i> Предстоящие
+            </button>
+            <button class="filter-btn" onclick="showMatches('live')">
+                <i class="fas fa-play-circle"></i> LIVE
+            </button>
+            <button class="filter-btn" onclick="showMatches('finished')">
+                <i class="fas fa-flag-checkered"></i> Результаты
+            </button>
+            <button class="filter-btn" onclick="showMatches('my')">
+                <i class="fas fa-user"></i> Мои матчи
+            </button>
+        </div>
+
+        <!-- Upcoming Matches -->
+        <div class="card" id="upcomingMatches">
+            <div class="card-header">
+                <h2 class="card-title">Предстоящие матчи</h2>
+                <div class="card-badge" id="upcomingCount">0</div>
+            </div>
+            
+            <div class="matches-grid" id="upcomingGrid">
+                <!-- Matches will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Live Matches -->
+        <div class="card mt-4" id="liveMatches" style="display: none;">
+            <div class="card-header">
+                <h2 class="card-title">Матчи в прямом эфире</h2>
+                <div class="card-badge">LIVE</div>
+            </div>
+            
+            <div class="matches-grid" id="liveGrid">
+                <!-- Live matches will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Finished Matches -->
+        <div class="card mt-4" id="finishedMatches" style="display: none;">
+            <div class="card-header">
+                <h2 class="card-title">Завершенные матчи</h2>
+                <div class="card-badge" id="finishedCount">0</div>
+            </div>
+            
+            <div class="matches-grid" id="finishedGrid">
+                <!-- Finished matches will be loaded here -->
+            </div>
+        </div>
+
+        <!-- Match Statistics -->
+        <div class="grid grid-2 mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Статистика матчей</h3>
+                    <i class="fas fa-chart-bar" style="color: var(--secondary);"></i>
+                </div>
+                
+                <div class="grid grid-2 mt-3" id="matchStats">
+                    <div class="text-center p-3">
+                        <div class="stat-value" id="totalMatchCount">0</div>
+                        <div class="stat-label">Всего матчей</div>
+                    </div>
+                    <div class="text-center p-3">
+                        <div class="stat-value" id="avgGoals">0</div>
+                        <div class="stat-label">Среднее голов</div>
+                    </div>
+                    <div class="text-center p-3">
+                        <div class="stat-value" id="homeWins">0</div>
+                        <div class="stat-label">Побед дома</div>
+                    </div>
+                    <div class="text-center p-3">
+                        <div class="stat-value" id="draws">0</div>
+                        <div class="stat-label">Ничьих</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Ближайшие туры</h3>
+                    <i class="fas fa-calendar" style="color: var(--accent);"></i>
+                </div>
+                
+                <div id="nextRounds">
+                    <!-- Next rounds will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>© 2026 ЛЪибилская Лига FC Mobile. Все права защищены.</p>
+        <div class="footer-links">
+            <a href="#" class="footer-link">Правила</a>
+            <a href="#" class="footer-link">Контакты</a>
+            <a href="admin.html" class="footer-link">Админ-панель</a>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Particles background
+        function createParticles() {
+            const particles = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = 15 + Math.random() * 15 + 's';
+                particles.appendChild(particle);
+            }
+        }
+
+        // Mobile menu
+        document.getElementById('mobileMenu').addEventListener('click', () => {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+
+        // User menu
+        document.getElementById('userMenu').addEventListener('click', () => {
+            if (confirm('Выйти из аккаунта?')) {
+                localStorage.removeItem('liga_userTeam');
+                localStorage.removeItem('liga_userOwner');
+                window.location.href = 'index.html';
+            }
+        });
+
+        let matchesData = [];
+        let userTeam = '';
+
+        // Load matches data
+        async function loadMatches() {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                matchesData = data.matches || [];
+                
+                updateMatchesDisplay();
+                updateMatchStats();
+                updateNextRounds();
+            } catch (error) {
+                console.error('Ошибка загрузки матчей:', error);
+            }
+        }
+
+        // Update matches display
+        function updateMatchesDisplay() {
+            const now = new Date();
+            userTeam = localStorage.getItem('liga_userTeam');
+            
+            // Upcoming matches
+            const upcoming = matchesData.filter(m => 
+                new Date(m.date) > now && m.status === 'scheduled'
+            );
+            
+            document.getElementById('upcomingCount').textContent = upcoming.length;
+            document.getElementById('upcomingGrid').innerHTML = upcoming.map(match => `
+                <div class="match-card">
+                    <div class="match-team">
+                        <div class="team-logo">${match.homeTeam.charAt(0)}</div>
+                        <div>
+                            <div class="team-name">${match.homeTeam}</div>
+                            <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                ${getTeamOwner(match.homeTeam)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="match-info">
+                        <div class="match-score">VS</div>
+                        <div class="match-status scheduled">${formatMatchDate(match.date, match.time)}</div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--gray);">
+                            <i class="far fa-calendar"></i> Тур ${match.round || 1}
+                        </div>
+                    </div>
+                    
+                    <div class="match-team text-right">
+                        <div style="text-align: right;">
+                            <div class="team-name">${match.awayTeam}</div>
+                            <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                ${getTeamOwner(match.awayTeam)}
+                            </div>
+                        </div>
+                        <div class="team-logo">${match.awayTeam.charAt(0)}</div>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center p-4" style="color: var(--gray);">Нет предстоящих матчей</p>';
+
+            // Live matches
+            const live = matchesData.filter(m => m.status === 'live');
+            document.getElementById('liveGrid').innerHTML = live.map(match => `
+                <div class="match-card">
+                    <div class="match-team">
+                        <div class="team-logo">${match.homeTeam.charAt(0)}</div>
+                        <div>
+                            <div class="team-name">${match.homeTeam}</div>
+                            <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                ${getTeamOwner(match.homeTeam)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="match-info">
+                        <div class="match-score">${match.homeScore || 0} : ${match.awayScore || 0}</div>
+                        <div class="match-status live">
+                            <i class="fas fa-play-circle"></i> ${match.minute || '1'}' минута
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--gray);">
+                            LIVE
+                        </div>
+                    </div>
+                    
+                    <div class="match-team text-right">
+                        <div style="text-align: right;">
+                            <div class="team-name">${match.awayTeam}</div>
+                            <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                ${getTeamOwner(match.awayTeam)}
+                            </div>
+                        </div>
+                        <div class="team-logo">${match.awayTeam.charAt(0)}</div>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center p-4" style="color: var(--gray);">Нет матчей в прямом эфире</p>';
+
+            // Finished matches
+            const finished = matchesData.filter(m => 
+                m.status === 'finished' || new Date(m.date) < now
+            );
+            
+            document.getElementById('finishedCount').textContent = finished.length;
+            document.getElementById('finishedGrid').innerHTML = finished.map(match => `
+                <div class="match-card">
+                    <div class="match-team">
+                        <div class="team-logo">${match.homeTeam.charAt(0)}</div>
+                        <div>
+                            <div class="team-name">${match.homeTeam}</div>
+                            <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                ${getTeamOwner(match.homeTeam)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="match-info">
+                        <div class="match-score">${match.homeScore || 0} : ${match.awayScore || 0}</div>
+                        <div class="match-status finished">
+                            ${formatMatchDate(match.date)}
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.875rem;">
+                            ${match.result || ''}
+                        </div>
+                    </div>
+                    
+                    <div class="match-team text-right">
+                        <div style="text-align: right;">
+                            <div class="team-name">${match.awayTeam}</div>
+                            <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                ${getTeamOwner(match.awayTeam)}
+                            </div>
+                        </div>
+                        <div class="team-logo">${match.awayTeam.charAt(0)}</div>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center p-4" style="color: var(--gray);">Нет завершенных матчей</p>';
+        }
+
+        // Get team owner
+        function getTeamOwner(teamName) {
+            // This would fetch from standings data
+            return 'Владелец';
+        }
+
+        // Format match date
+        function formatMatchDate(dateString, time = '') {
+            const date = new Date(dateString);
+            const formattedDate = date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+            
+            return time ? `${formattedDate}, ${time}` : formattedDate;
+        }
+
+        // Show matches by type
+        function showMatches(type) {
+            document.querySelectorAll('.filter-btn').forEach(btn => 
+                btn.classList.remove('active')
+            );
+            event.target.classList.add('active');
+            
+            document.getElementById('upcomingMatches').style.display = 'none';
+            document.getElementById('liveMatches').style.display = 'none';
+            document.getElementById('finishedMatches').style.display = 'none';
+            
+            if (type === 'upcoming') {
+                document.getElementById('upcomingMatches').style.display = 'block';
+            } else if (type === 'live') {
+                document.getElementById('liveMatches').style.display = 'block';
+            } else if (type === 'finished') {
+                document.getElementById('finishedMatches').style.display = 'block';
+            } else if (type === 'my' && userTeam) {
+                // Filter matches for user's team
+                const userMatches = matchesData.filter(m => 
+                    m.homeTeam === userTeam || m.awayTeam === userTeam
+                );
+                
+                document.getElementById('upcomingMatches').style.display = 'block';
+                document.getElementById('upcomingGrid').innerHTML = userMatches.map(match => `
+                    <div class="match-card">
+                        <div class="match-team">
+                            <div class="team-logo">${match.homeTeam.charAt(0)}</div>
+                            <div>
+                                <div class="team-name">${match.homeTeam}</div>
+                                <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                    ${getTeamOwner(match.homeTeam)}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="match-info">
+                            <div class="match-score">
+                                ${match.homeScore || 0} : ${match.awayScore || 0}
+                            </div>
+                            <div class="match-status ${match.status}">
+                                ${formatMatchDate(match.date, match.time)}
+                            </div>
+                        </div>
+                        
+                        <div class="match-team text-right">
+                            <div style="text-align: right;">
+                                <div class="team-name">${match.awayTeam}</div>
+                                <div class="team-owner" style="font-size: 0.875rem; color: var(--gray);">
+                                    ${getTeamOwner(match.awayTeam)}
+                                </div>
+                            </div>
+                            <div class="team-logo">${match.awayTeam.charAt(0)}</div>
+                        </div>
+                    </div>
+                `).join('') || '<p class="text-center p-4" style="color: var(--gray);">Нет матчей вашей команды</p>';
+            }
+        }
+
+        // Update match statistics
+        function updateMatchStats() {
+            const finishedMatches = matchesData.filter(m => 
+                m.status === 'finished'
+            );
+            
+            document.getElementById('totalMatchCount').textContent = finishedMatches.length;
+            
+            const totalGoals = finishedMatches.reduce((sum, match) => 
+                sum + (match.homeScore || 0) + (match.awayScore || 0), 0
+            );
+            document.getElementById('avgGoals').textContent = 
+                finishedMatches.length > 0 ? (totalGoals / finishedMatches.length).toFixed(1) : '0';
+            
+            const homeWins = finishedMatches.filter(m => 
+                (m.homeScore || 0) > (m.awayScore || 0)
+            ).length;
+            document.getElementById('homeWins').textContent = homeWins;
+            
+            const draws = finishedMatches.filter(m => 
+                (m.homeScore || 0) === (m.awayScore || 0)
+            ).length;
+            document.getElementById('draws').textContent = draws;
+        }
+
+        // Update next rounds
+        function updateNextRounds() {
+            const upcoming = matchesData.filter(m => 
+                new Date(m.date) > new Date() && m.status === 'scheduled'
+            );
+            
+            const rounds = [...new Set(upcoming.map(m => m.round || 1))].slice(0, 3);
+            
+            document.getElementById('nextRounds').innerHTML = rounds.map(round => `
+                <div class="p-3 mb-2" style="
+                    background: rgba(255, 255, 255, 0.03);
+                    border-radius: var(--radius-sm);
+                    border-left: 3px solid var(--secondary);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: var(--secondary);">Тур ${round}</strong>
+                            <div style="font-size: 0.875rem; color: var(--gray);">
+                                ${getRoundDate(round)}
+                            </div>
+                        </div>
+                        <div style="
+                            background: var(--glass-bg);
+                            padding: 0.25rem 0.75rem;
+                            border-radius: 50px;
+                            font-size: 0.875rem;
+                        ">
+                            ${upcoming.filter(m => (m.round || 1) === round).length} матчей
+                        </div>
+                    </div>
+                </div>
+            `).join('') || '<p class="text-center p-4" style="color: var(--gray);">Нет запланированных туров</p>';
+        }
+
+        // Get round date
+        function getRoundDate(round) {
+            const matches = matchesData.filter(m => (m.round || 1) === round);
+            if (matches.length > 0) {
+                return formatMatchDate(matches[0].date);
+            }
+            return 'Дата уточняется';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            
+            // Check if user is logged in
+            if (!localStorage.getItem('liga_userTeam')) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            loadMatches();
+            
+            // Auto-refresh for live matches
+            setInterval(() => {
+                const now = new Date();
+                const hasLiveMatches = matchesData.some(m => m.status === 'live');
+                if (hasLiveMatches) {
+                    loadMatches();
+                }
+            }, 10000); // Refresh every 10 seconds for live matches
+        });
+    </script>
+</body>
+</html>
