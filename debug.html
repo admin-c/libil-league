@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Отладка системы</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #0f172a; color: white; }
+        .section { background: #1e293b; padding: 20px; margin: 20px 0; border-radius: 10px; }
+        button { padding: 10px 20px; margin: 5px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+        pre { background: #0a0f1c; padding: 15px; border-radius: 5px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Отладка системы ЛЪибилская Лига</h1>
+    
+    <div class="section">
+        <h2>1. Проверка API</h2>
+        <button onclick="checkAPI()">Проверить /api/data</button>
+        <button onclick="checkHealth()">Проверить /api/health</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Тест регистрации</h2>
+        <input type="text" id="testTeam" placeholder="Название команды" value="Тестовая команда">
+        <input type="text" id="testOwner" placeholder="Владелец" value="Тестовый владелец">
+        <button onclick="testRegistration()">Отправить тестовую заявку</button>
+        <div id="regResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Текущие данные</h2>
+        <button onclick="loadData()">Загрузить все данные</button>
+        <div id="dataResult"></div>
+    </div>
+    
+    <div class="section">
+        <h2>4. Очистка кэша</h2>
+        <button onclick="clearCache()">Очистить кэш браузера</button>
+        <button onclick="clearAll()">Полный сброс</button>
+    </div>
+    
+    <script>
+        async function checkAPI() {
+            try {
+                const res = await fetch('/api/data');
+                const data = await res.json();
+                document.getElementById('apiResult').innerHTML = `
+                    <p class="success">✅ API работает</p>
+                    <p>Команд в таблице: ${data.standings?.length || 0}</p>
+                    <p>Ожидающих заявок: ${data.pendingRegistrations?.length || 0}</p>
+                    <button onclick="showData()">Показать JSON</button>
+                    <pre id="jsonData" style="display:none">${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (err) {
+                document.getElementById('apiResult').innerHTML = `<p class="error">❌ Ошибка: ${err.message}</p>`;
+            }
+        }
+        
+        function showData() {
+            const el = document.getElementById('jsonData');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        async function checkHealth() {
+            try {
+                const res = await fetch('/api/health');
+                const data = await res.json();
+                document.getElementById('apiResult').innerHTML = `
+                    <p class="success">✅ Health check</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (err) {
+                document.getElementById('apiResult').innerHTML = `<p class="error">❌ Ошибка: ${err.message}</p>`;
+            }
+        }
+        
+        async function testRegistration() {
+            const team = document.getElementById('testTeam').value;
+            const owner = document.getElementById('testOwner').value;
+            
+            const registration = {
+                team: team,
+                owner: owner,
+                email: 'test@example.com',
+                phone: '+79999999999',
+                date: new Date().toISOString()
+            };
+            
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(registration)
+                });
+                
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('regResult').innerHTML = `
+                        <p class="success">✅ Заявка отправлена!</p>
+                        <p>ID: ${data.registrationId}</p>
+                        <p>Команда: ${data.team}</p>
+                        <p>Сообщение: ${data.message}</p>
+                    `;
+                } else {
+                    document.getElementById('regResult').innerHTML = `
+                        <p class="error">❌ Ошибка: ${data.error}</p>
+                    `;
+                }
+            } catch (err) {
+                document.getElementById('regResult').innerHTML = `<p class="error">❌ Ошибка сети: ${err.message}</p>`;
+            }
+        }
+        
+        async function loadData() {
+            const data = await (await fetch('/api/data')).json();
+            document.getElementById('dataResult').innerHTML = `
+                <h3>Текущие данные:</h3>
+                <p><strong>Команды в таблице:</strong> ${data.standings?.length || 0}</p>
+                <ul>
+                    ${(data.standings || []).map(t => `<li>${t.team} (${t.owner}) - ${t.points} очков</li>`).join('')}
+                </ul>
+                <p><strong>Ожидающие заявки:</strong> ${data.pendingRegistrations?.length || 0}</p>
+                <ul>
+                    ${(data.pendingRegistrations || []).map(r => `<li>${r.team} (${r.owner}) - ${new Date(r.date).toLocaleString()}</li>`).join('')}
+                </ul>
+            `;
+        }
+        
+        function clearCache() {
+            localStorage.clear();
+            sessionStorage.clear();
+            caches.keys().then(names => names.forEach(name => caches.delete(name)));
+            alert('Кэш очищен!');
+        }
+        
+        function clearAll() {
+            if (confirm('Полный сброс?')) {
+                clearCache();
+                indexedDB.databases().then(dbs => {
+                    dbs.forEach(db => indexedDB.deleteDatabase(db.name));
+                });
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
